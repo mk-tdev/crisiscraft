@@ -1,0 +1,37 @@
+{
+  "id": "harbor-point", "version": "1", "name": "Harbor Point",
+  "horizon": 15, "checkpointTick": 2, "depot": "D", "stock": 12, "reserveMinimum": 1,
+  "nodes": [
+    { "id": "D", "label": "Supply depot", "x": -7, "z": 4, "kind": "depot", "receiving": true },
+    { "id": "J", "label": "Bridge junction", "x": -3, "z": -3, "kind": "junction", "receiving": true },
+    { "id": "H", "label": "Hill junction", "x": 1, "z": 4, "kind": "junction", "receiving": true },
+    { "id": "S", "label": "School shelter", "x": 6, "z": -3, "kind": "shelter", "receiving": false },
+    { "id": "E", "label": "East shelter", "x": 7, "z": 6, "kind": "shelter", "receiving": true }
+  ],
+  "edges": [
+    { "id": "DJ", "from": "D", "to": "J", "minutes": 2 },
+    { "id": "JS", "from": "J", "to": "S", "minutes": 2 },
+    { "id": "DH", "from": "D", "to": "H", "minutes": 3 },
+    { "id": "HS", "from": "H", "to": "S", "minutes": 3 },
+    { "id": "JH", "from": "J", "to": "H", "minutes": 4 },
+    { "id": "DE", "from": "D", "to": "E", "minutes": 4 }
+  ],
+  "vehicles": [{ "id": "V1", "capacity": 6 }, { "id": "V2", "capacity": 6 }],
+  "requests": [
+    { "id": "school", "destination": "S", "quantity": 6, "openedTick": 0, "dueTick": 9 },
+    { "id": "east", "destination": "E", "quantity": 6, "openedTick": 5, "dueTick": 12 }
+  ],
+  "observations": [
+    { "id": "stock-0", "entityId": "D", "fact": "12 crates and two trucks with capacity 6 each are available at the depot.", "observedTick": 0, "receivedTick": 0, "audience": ["logistics"] },
+    { "id": "bridge-0", "entityId": "JS", "fact": "Bridge was open when inspected at minute 0. This is an observation, not a guarantee of current access.", "observedTick": 0, "receivedTick": 0, "audience": ["logistics"] },
+    { "id": "school-0", "entityId": "S", "fact": "School needs 6 crates by minute 9. Receiving power is unavailable; recovery is expected at minute 6.", "observedTick": 0, "receivedTick": 0, "audience": ["shelter"] },
+    { "id": "risk-1", "entityId": "JS", "fact": "Rising water threatens the bridge. Hill road is open; consider an alternative route.", "observedTick": 1, "receivedTick": 1, "audience": ["field"] },
+    { "id": "closure-4", "entityId": "JS", "fact": "Bridge is closed to new entry.", "observedTick": 4, "receivedTick": 4, "audience": ["public", "field"] },
+    { "id": "east-5", "entityId": "E", "fact": "East shelter requests 6 crates by minute 12.", "observedTick": 5, "receivedTick": 5, "audience": ["shelter"] },
+    { "id": "power-6", "entityId": "S", "fact": "School receiving power is restored. Deliveries can now unload.", "observedTick": 6, "receivedTick": 6, "audience": ["public", "shelter"] }
+  ],
+  "events": [
+    { "id": "bridge-closes", "tick": 4, "type": "close-road", "edgeId": "JS" },
+    { "id": "school-reopens", "tick": 6, "type": "receiving", "nodeId": "S", "enabled": true }
+  ]
+}
