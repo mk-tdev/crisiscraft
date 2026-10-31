@@ -10,7 +10,7 @@ for (const name of ['crew', 'voice']) {
   const fn = `${out}/functions/api/${name}.func`;
   mkdirSync(fn, { recursive: true });
   await build({
-    entryPoints: [`api/${name}.ts`], outfile: `${fn}/index.mjs`, bundle: true,
+    entryPoints: [`server/${name}.ts`], outfile: `${fn}/index.mjs`, bundle: true,
     platform: 'node', format: 'esm', target: 'node22', logLevel: 'warning',
   });
   writeFileSync(`${fn}/.vc-config.json`, JSON.stringify({

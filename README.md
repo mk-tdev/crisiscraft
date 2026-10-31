@@ -82,7 +82,7 @@ npm run build:vercel      # static app + bundled crew function in .vercel/output
 | `packages/crew` | Roster, bounded briefings, Meta provider, scripted crew, deliberation and guardrail loop, NDJSON handler |
 | `packages/contracts` | Shared schemas and types |
 | `apps/web` | React + three.js town, command room, crew view, event log and decision replay |
-| `api/crew.ts` | Vercel function: rebuilds the run from approved commands, then lets the crew deliberate |
+| `server/crew.ts`, `server/voice.ts` | Vercel functions (bundled into `/api/*`): the crew rebuilds the run from approved commands, then deliberates; voice forwards a spoken order to Muse Voice Transcribe |
 | `scenarios/harbor-point.json` | The authored scenario: road graph, reports, closures and requests |
 
 The server never trusts the browser's world state. It replays the approved command history through the engine and builds every briefing from that result. The model can propose a plan, but it can't create supplies, open a closed road, overload a truck or move the clock.

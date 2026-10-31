@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["apps", "packages", "tests", "api", "vitest.config.ts"]
+  "include": ["apps", "packages", "tests", "server", "vitest.config.ts"]
 }
