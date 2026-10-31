@@ -23,7 +23,7 @@ export function Avatar({ from, size = 30 }: { from: CrewTurn["from"]; size?: num
 }
 
 const kindLabel: Record<CrewTurn["kind"], string> = {
-  order: "Order", report: "Report", plan: "Plan", refused: "Refused", passed: "Checked", hold: "Hold",
+  order: "Order", report: "Report", tool: "Tool", plan: "Plan", refused: "Refused", passed: "Checked", hold: "Hold",
 };
 
 function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {

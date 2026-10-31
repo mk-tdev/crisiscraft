@@ -3,12 +3,13 @@ import { approveCommand } from '@crisiscraft/sim';
 import { briefing } from './context';
 import type { CrewProvider, TeamMessage, Usage } from './providers';
 import { crew, roles } from './roster';
+import { planTools } from './tools';
 import type { Plan } from './schemas';
 
 export interface CrewTurn {
   id: string;
   from: Role | 'commander' | 'guardrail';
-  kind: 'order' | 'report' | 'plan' | 'refused' | 'passed' | 'hold';
+  kind: 'order' | 'report' | 'tool' | 'plan' | 'refused' | 'passed' | 'hold';
   text: string;
   detail?: string;
   cites: string[];
@@ -73,7 +74,11 @@ export async function deliberate(
   const base = { minute: state.tick, revision: state.revision, order, provider: { id: provider.id, label: provider.label, model: provider.model, live: provider.live } };
   let refusal: string | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const p = await provider.plan({ kind: 'plan', role: 'logistics', order, briefing: briefing(scenario, state, 'logistics'), team, refusal });
+    const p = await provider.plan({
+      kind: 'plan', role: 'logistics', order, briefing: briefing(scenario, state, 'logistics'), team, refusal,
+      tools: planTools(scenario, state),
+      onTool: call => turns.push(turn({ from: 'logistics', kind: 'tool', text: call.summary, detail: call.name, cites: [] })),
+    });
     const plan = p.output;
     turns.push(turn({ from: 'logistics', kind: 'plan', text: plan.message, detail: plan.rationale, cites: plan.cites, ms: p.ms, usage: p.usage, prompt: p.prompt }));
     if (plan.hold || plan.actions.length === 0) {

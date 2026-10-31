@@ -374,3 +374,10 @@ select { appearance: none; padding: 7px 10px; font-family: var(--mono); font-siz
 .legend i { width: 9px; height: 9px; border-radius: 3px; }
 .sw-bridge { background: #8fb4ff; }
 .sw-floodwater { background: #ff9a6b; }
+
+/* Priya's tool calls: the engine answering her, not a person speaking */
+.kind-tool { color: var(--muted); }
+.turn-tool { padding: 5px 0; }
+.turn-tool .avatar { opacity: .55; }
+.turn-tool .turn-body > p:not(.turn-detail) { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--muted); }
+.turn-tool .turn-detail { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10.5px; }

@@ -32,7 +32,7 @@ describe('scripted crew', () => {
     expect(result.provider.live).toBe(false);
     expect(result.command?.actions[0]).toMatchObject({ vehicleId: 'V1', requestId: 'school', quantity: 6, route: ['D', 'H', 'S'] });
     expect(result.turns.map(t => `${t.from}:${t.kind}`)).toEqual([
-      'commander:order', 'logistics:report', 'shelter:report', 'field:report', 'logistics:plan', 'guardrail:passed',
+      'commander:order', 'logistics:report', 'shelter:report', 'field:report', 'logistics:tool', 'logistics:plan', 'guardrail:passed',
     ]);
   });
 

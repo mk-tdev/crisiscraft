@@ -3,15 +3,20 @@ import { harborPoint, shortestOpenRoute } from '@crisiscraft/sim';
 import type { Briefing } from './context';
 import { crew, truckNames } from './roster';
 import { jsonSchemas, planSchema, reportSchema, type Plan, type Report } from './schemas';
+import { toolDefinitions, type PlanTools, type ToolCall } from './tools';
 
 export interface TeamMessage { from: Role; text: string; cites: string[] }
 
 export type CrewTask =
   | { kind: 'report'; role: Role; order: string; briefing: Briefing }
-  | { kind: 'plan'; role: 'logistics'; order: string; briefing: Briefing; team: TeamMessage[]; refusal?: string };
+  | {
+    kind: 'plan'; role: 'logistics'; order: string; briefing: Briefing; team: TeamMessage[]; refusal?: string;
+    /** Engine-backed tools the planner may call before submitting; each call is reported as it happens. */
+    tools?: PlanTools; onTool?: (call: ToolCall) => void;
+  };
 
 export interface Usage { inputTokens: number; outputTokens: number }
-export interface TurnResult<T> { output: T; usage: Usage | null; ms: number; prompt: { system: string; user: string } }
+export interface TurnResult<T> { output: T; usage: Usage | null; ms: number; prompt: { system: string; user: string }; calls?: number }
 
 export interface CrewProvider {
   id: 'meta' | 'scripted';
@@ -42,6 +47,8 @@ export function prompts(task: CrewTask) {
         'If a teammate warned against it, say so in your message in plain words so the commander approves with eyes open.',
         'If the order cannot be done safely, or needs a truck you must keep in reserve, set hold=true with empty actions and explain.',
         'In rationale, name the teammate report or observation id that shaped the route.',
+        ...(task.tools ? ['You have tools. Use list_routes to read your map, check_plan to dry-run a plan against the validator, then submit_plan exactly once.',
+          'Check a plan before you submit it; if the check refuses it, fix it or hold.'] : []),
       ].join(' '),
   ].join('\n');
   const user = JSON.stringify({
@@ -91,10 +98,59 @@ export function metaProvider(env: Record<string, string | undefined>): CrewProvi
       prompt,
     };
   }
+  /**
+   * Priya as a tool-using agent: Chat Completions with function tools, run in our loop.
+   * tool_choice can only be "auto", so a plain-text reply is nudged back to submit_plan.
+   */
+  async function agent(task: Extract<CrewTask, { kind: 'plan' }>, tools: PlanTools): Promise<TurnResult<Plan>> {
+    const prompt = prompts(task);
+    const started = Date.now();
+    const usage: Usage = { inputTokens: 0, outputTokens: 0 };
+    type Message = { role: string; content: string | null; tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[]; tool_call_id?: string };
+    const messages: Message[] = [{ role: 'system', content: prompt.system }, { role: 'user', content: prompt.user }];
+    let calls = 0;
+    for (let step = 0; step < 6; step++) {
+      const response = await fetch(`${base}/chat/completions`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(45_000),
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, reasoning_effort: env.MODEL_REASONING || 'low', max_completion_tokens: 3000, messages, tools: toolDefinitions, tool_choice: 'auto' }),
+      });
+      if (!response.ok) throw new Error(`Model API ${response.status}: ${(await response.text()).slice(0, 300)}`);
+      const body = await response.json() as { choices?: { message?: Message }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+      usage.inputTokens += body.usage?.prompt_tokens ?? 0;
+      usage.outputTokens += body.usage?.completion_tokens ?? 0;
+      const message = body.choices?.[0]?.message;
+      const toolCalls = message?.tool_calls ?? [];
+      if (!toolCalls.length) {
+        // No tool call: accept a JSON plan in the text, otherwise ask for submit_plan.
+        const parsed = planSchema.safeParse((() => { try { return JSON.parse(message?.content ?? ''); } catch { return null; } })());
+        if (parsed.success) return { output: parsed.data, usage, ms: Date.now() - started, prompt, calls };
+        messages.push({ role: 'assistant', content: message?.content ?? '' }, { role: 'user', content: 'Call submit_plan with your final plan now.' });
+        continue;
+      }
+      messages.push({ role: 'assistant', content: message?.content ?? '', tool_calls: toolCalls });
+      for (const tc of toolCalls) {
+        let args: unknown = null;
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* reported back as a tool error */ }
+        if (tc.function.name === 'submit_plan') {
+          const plan = planSchema.safeParse(args);
+          if (plan.success) return { output: plan.data, usage, ms: Date.now() - started, prompt, calls };
+          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ error: 'Plan did not match the schema.', issues: plan.error.issues.slice(0, 3) }) });
+          continue;
+        }
+        const { result, call } = tools.call(tc.function.name, args);
+        calls++;
+        if (call) task.onTool?.(call);
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+      }
+    }
+    throw new Error(`${crew.logistics.name} did not submit a plan after six steps.`);
+  }
   return {
     id: 'meta', label: 'Meta Model API', model, live: true,
     report: task => call(task, 'report', v => reportSchema.parse(v)),
-    plan: task => call(task, 'plan', v => planSchema.parse(v)),
+    plan: task => (task.tools ? agent(task, task.tools) : call(task, 'plan', v => planSchema.parse(v))),
   };
 }
 
@@ -160,6 +216,10 @@ export const scriptedProvider: CrewProvider = {
         actions: [{ vehicleId: idle[0]!.id, requestId: request.id, quantity: Math.min(6, request.quantity - request.delivered), route }],
         cites: warned && !viaBridge ? ['risk-1'] : ['bridge-0'],
       };
+    }
+    if (task.tools && output.actions.length) {
+      const { call } = task.tools.call('check_plan', { actions: output.actions });
+      if (call) task.onTool?.(call);
     }
     return { output, usage: null, ms: 0, prompt: prompts(task) };
   },

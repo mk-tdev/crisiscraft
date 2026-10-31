@@ -6,3 +6,4 @@ export * from './deliberate';
 export * from './handler';
 export * from './voice';
 export * from './photo';
+export * from './tools';
