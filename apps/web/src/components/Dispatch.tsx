@@ -19,7 +19,7 @@ function suggestions(world: WorldState) {
 
 /** Bottom-centre: the dispatch ticket when a checked plan is waiting, otherwise the radio command bar. */
 export function Dispatch({
-  world, state, ended, stale, voice, onAsk, onApprove, onDismiss, onReplay,
+  world, state, ended, stale, voice, onAsk, onApprove, onDismiss, onReplay, onReview,
 }: {
   world: WorldState;
   state: CrewState | null;
@@ -30,6 +30,8 @@ export function Dispatch({
   onApprove: () => void;
   onDismiss: () => void;
   onReplay: (() => void) | null;
+  /** Present when a live key can write the after-action review. */
+  onReview?: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const [focused, setFocused] = useState(false);
@@ -76,7 +78,10 @@ export function Dispatch({
     return (
       <section className="commandbar glass ended">
         <p><strong>Minute 15.</strong> The drill is over. {onReplay ? "Compare the two futures." : "Open the log and rewind a decision to try another road."}</p>
-        {onReplay && <button className="go" onClick={onReplay}><Icon name="split" size={15} /> Decision replay</button>}
+        <div className="ended-actions">
+          {onReview && <button className="ghost" onClick={onReview}><Icon name="spark" size={15} /> After-action review</button>}
+          {onReplay && <button className="go" onClick={onReplay}><Icon name="split" size={15} /> Decision replay</button>}
+        </div>
       </section>
     );
   }

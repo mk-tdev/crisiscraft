@@ -9,6 +9,7 @@ import { describe, mm, requestNames, routeName, trucks } from "./format";
 import { Icon, type IconName } from "./icons";
 import { Radio, type CrewState } from "./components/Radio";
 import { usePhoto } from "./components/Photo";
+import { Review } from "./components/Review";
 import { Dispatch } from "./components/Dispatch";
 import { CrewPanel } from "./components/Crew";
 import { LogPanel } from "./components/Log";
@@ -78,6 +79,7 @@ export function App() {
   const [labels, setLabels] = useState(true);
   const [weather, setWeather] = useState(true);
   const [comparing, setComparing] = useState(false);
+  const [reviewing, setReviewing] = useState<"run" | "both" | null>(null);
 
   useEffect(() => {
     void crewStatus().then((status) => {
@@ -131,7 +133,12 @@ export function App() {
   const schoolState = school?.completedTick != null ? (school.completedTick <= school.dueTick ? "good" : "warn") : world.tick > (school?.dueTick ?? 99) ? "bad" : "";
 
   if (comparing && timelines.B) {
-    return <div className="room"><Compare a={timelines.A} b={timelines.B} onClose={() => setComparing(false)} /></div>;
+    return (
+      <div className="room">
+        <Compare a={timelines.A} b={timelines.B} onClose={() => setComparing(false)} onReview={voice ? () => setReviewing("both") : undefined} />
+        {reviewing && <Review runs={[{ label: "A", timeline: timelines.A }, { label: "B", timeline: timelines.B! }]} onClose={() => setReviewing(null)} />}
+      </div>
+    );
   }
 
   return (
@@ -252,6 +259,7 @@ export function App() {
           onApprove={approve}
           onDismiss={crewChat.clear}
           onReplay={branchReady ? () => setComparing(true) : null}
+          onReview={voice && timeline.decisions.length ? () => setReviewing("run") : undefined}
         />
       </div>
 
@@ -272,6 +280,7 @@ export function App() {
       </aside>
 
       <Briefing open={briefing} onClose={closeBriefing} />
+      {reviewing === "run" && <Review runs={[{ label: active, timeline }]} onClose={() => setReviewing(null)} />}
     </div>
   );
 }

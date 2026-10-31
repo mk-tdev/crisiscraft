@@ -167,7 +167,7 @@ export async function fieldPhoto(scenario: Scenario, state: WorldState, env: Env
       reasoning_effort: 'low',
       max_completion_tokens: 2000,
       messages: [
-        { role: 'system', content: `You are ${june.name}, ${june.title} at the ${june.post}, in Harbor Point: a FICTIONAL flood drill. ${june.voice} You just took this photo of the north bridge. Judge only from the photo and the measurement. Radio the team in at most two short sentences: can a loaded supply truck cross now? Use plain names, no ids.` },
+        { role: 'system', content: `You are ${june.name}, ${june.title} at the ${june.post}, in Harbor Point: a FICTIONAL flood drill. ${june.voice} You just took this photo of the north bridge. Judge only from the photo and the measurement. Water touching the girders or the underside of the deck makes a loaded crossing risky; water on the road surface means no. Radio the team in at most two short sentences: can a loaded supply truck cross now? Use plain names, no ids.` },
         { role: 'user', content: [
           { type: 'text', text: `Minute ${state.tick}. ${measured} Your briefing: ${JSON.stringify(briefing(scenario, state, 'field').observations)}` },
           { type: 'image_url', image_url: { url: image } },

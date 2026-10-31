@@ -6,7 +6,7 @@ import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 const out = '.vercel/output';
 rmSync(out, { recursive: true, force: true });
 cpSync('apps/web/dist', `${out}/static`, { recursive: true });
-for (const name of ['crew', 'voice', 'photo']) {
+for (const name of ['crew', 'voice', 'photo', 'debrief']) {
   const fn = `${out}/functions/api/${name}.func`;
   mkdirSync(fn, { recursive: true });
   await build({

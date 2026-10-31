@@ -39,7 +39,7 @@ function Future({ side, tag, timeline, minute }: { side: "a" | "b"; tag: string;
 }
 
 /** Full-screen split: two towns, one clock. Same storm, one changed order. */
-export function Compare({ a, b, onClose }: { a: Timeline; b: Timeline; onClose: () => void }) {
+export function Compare({ a, b, onClose, onReview }: { a: Timeline; b: Timeline; onClose: () => void; onReview?: () => void }) {
   const start = b.branchTick ?? harborPoint.checkpointTick;
   const [minute, setMinute] = useState(start);
   const [playing, setPlaying] = useState(true);
@@ -78,6 +78,7 @@ export function Compare({ a, b, onClose }: { a: Timeline; b: Timeline; onClose: 
           <span className="clock-sm">{mm(minute)}:00</span>
           <button className="ghost" onClick={() => { setPlaying(false); setMinute(deadline); }}>Deadline {mm(deadline)}</button>
           <button className="ghost" onClick={() => { setPlaying(false); setMinute(harborPoint.horizon); }}>End {mm(harborPoint.horizon)}</button>
+          {onReview && <button className="go" onClick={() => { setPlaying(false); setMinute(harborPoint.horizon); onReview(); }}><Icon name="spark" size={15} /> Review</button>}
         </div>
       </div>
     </section>
