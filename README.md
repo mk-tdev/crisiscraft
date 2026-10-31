@@ -1,72 +1,94 @@
-# CrisisCraft
+<div align="center">
+  <img src="apps/web/public/favicon.svg" width="80" height="80" alt="CrisisCraft mark" />
+  <h1>CrisisCraft</h1>
+  <p><strong>Practise the crisis before it happens.</strong></p>
+  <p>A flooded town. A crew who each know a different part of the story. One decision you can take back.</p>
+</div>
 
-A fictional emergency coordination drill: approve a supply delivery, watch the consequences, then rewind one route decision and compare two timelines.
+The water is rising in Harbor Point. The school shelter needs six crates of supplies by minute 9, but it has no power to unload them. The north bridge is the fastest way there, and nobody is sure how long it will stay open.
 
-## Current milestone
+In **CrisisCraft** you are the coordinator. You give orders in your own words to a crew of three people. Each crew member is powered by a **Meta model** and knows only what that person would really know. They report, disagree and propose a plan. The simulation checks every plan against the town's rules before you can approve it. When the minutes have run out, **rewind one decision** and watch the other future play out beside the first.
 
-Implemented on 28 October 2026: a TypeScript workspace, deterministic Harbor Point simulation, schema-validated dispatch, event logs, role-specific observation projections, checkpoint/replay primitives and a local React/Three.js preview.
+![Harbor Point fills the screen: mission clock above, crew radio and command bar below](docs/screenshots/town.jpg)
 
-The preview uses **manual dispatch and authored reports**, labeled in the interface. Meta inference, free-text commands, a server authority, durable sessions, voice and hosted deployment are still pending. This is a fictional rehearsal prototype, not a live emergency-response tool or a validated training product.
+## Meet the crew
 
-## Run locally
+| | Who | What they know |
+| --- | --- | --- |
+| 🟦 | **Priya**, logistics lead at the supply depot | Stock, truck capacity and the road map. She drafts every plan. |
+| 🟪 | **Malik**, shelter manager at the school | What each shelter needs, by when, and whether it can unload. |
+| 🟩 | **June**, field lead at the north bridge | What the water is doing to the roads right now. |
 
-Use Node 22.12 or newer (verified with Node 24.18) and npm. From the workspace root:
+Nobody sees everything. Priya has the road map, but only June has seen the water at the bridge. If June's warning never reaches the radio, Priya will happily send a truck over it.
+
+![The crew answers on the radio; Priya’s plan arrives as a dispatch ticket](docs/screenshots/crew.jpg)
+
+## Try a drill in three minutes
+
+1. **Give an order.** Type something like *"Get supplies to the school, keep one truck back"*, or choose a suggestion.
+2. **Listen to the radio.** Priya, Malik and June each reply from their own briefing. Open **What they saw** under any message to see the exact facts that person was given.
+3. **Read the plan.** Priya proposes a truck, crates and a route. The rules check passes it or refuses it. A refused plan goes back to her with the reason, and she gets one revision.
+4. **Approve and watch.** The truck rolls through the storm. The bridge may close. The school's power may come back. Every moment is recorded.
+5. **Rewind.** In the **Log**, choose **Rewind** on your decision. You return to that minute with the same storm and a fresh choice. Then open **Decision replay** to watch both futures side by side, with a debrief that names the event that made them different.
+
+## What it teaches
+
+| Concept | In the drill |
+| --- | --- |
+| **Bounded knowledge** | Each model call receives only that role's observations, each marked with how old it is. |
+| **The crew proposes, you decide** | The model never moves a truck. Only your approval changes the world. |
+| **Rules the model can't bend** | Stock, capacity, closed roads and the one-truck reserve are enforced in code, not in the prompt. |
+| **Rewind one decision** | Same world, same events, one changed order. The difference comes from recorded events, not a guess. |
+
+![Decision replay: two towns split down the middle, one shared clock](docs/screenshots/replay.jpg)
+
+## How Meta models are used
+
+Every turn on the radio is a separate call to the **Meta Model API** (`muse-spark-1.3` by default) with schema-constrained JSON output:
+
+- **Three role reports run in parallel.** Each report sees only its own briefing, projected by the engine from the world state. The future schedule, other roles' private reports and the true road status are never in the prompt.
+- **A planning turn** sees Priya's briefing plus what her teammates said on the radio. It must return a structured plan: truck, request, quantity and route.
+- **A guardrail loop** dry-runs that plan in the deterministic engine. If the plan is refused, the reason goes back to the model for one revision. Two refusals mean nothing happens, and the crew says so.
+
+Turns stream to the browser as they arrive. Each turn shows its latency, token count and the exact briefing the model received. Muse Spark Open on Baseten works through the same OpenAI-compatible interface by changing `MODEL_BASE_URL` and `MODEL_NAME`.
+
+**Without a key**, the app runs a deterministic **Scripted crew**. It reads the same bounded briefings and follows the same rules, and the header clearly labels it *Scripted crew · no model key*. It exists so anyone can explore the drill offline. It is not presented as AI.
+
+## Run it locally
+
+You'll need **Node.js 22.12 or newer** (verified with Node 24).
 
 ```sh
 npm ci
+cp .env.example .env      # add MODEL_API_KEY for the live Meta crew; leave blank for the scripted crew
+npm run assets:fetch      # CC0 Poly Haven models, textures and sky (Python 3)
 npm run dev
 ```
 
-Open the Local URL printed by Vite, normally `http://127.0.0.1:5173/`. No account, API key or external service is needed for this milestone. Refresh resets the in-memory exercise.
-
-1. Start at minute 2 and choose the bridge or hill route.
-2. Approve V1's six-crate delivery; V2 must remain at the depot.
-3. Play, advance one minute or run to the end.
-4. Choose **Rewind & compare routes**. Both timelines have the same starting state, supplies, reserve constraint and external events.
-5. Compare minute 9, the delivery deadline, and minute 15, the final horizon.
-
-## Verify
+Open **http://127.0.0.1:5173**. The crew API runs inside the dev server at `/api/crew`, the same handler that ships as the Vercel function.
 
 ```sh
-npm test
-npm run typecheck
-npm run build
-# Or run all required checks together:
-npm run check
+npm run check             # 44 engine and crew tests + strict typecheck + production build
+npm run build:vercel      # static app + bundled crew function in .vercel/output
 ```
 
-The test suite covers inventory conservation, capacity, reserve protection, simultaneous arrival and closure ordering, waiting to unload, atomic batch approvals, idempotency, stale revisions, observation boundaries, checkpoint isolation, route tie-breaking and replay hashes. Production output is generated in `apps/web/dist`.
+## How it's built
 
-## Workspace
-
-| Path | Purpose |
+| Path | What it does |
 | --- | --- |
-| `apps/web` | React/Vite app, original primitive 3D town and manual controls |
-| `packages/contracts` | Shared TypeScript types and runtime schemas |
-| `packages/sim` | Pure simulation, routing, metrics, observation projections and replay |
-| `scenarios/harbor-point.json` | Versioned authored scenario, road graph and reports |
-| `tests/simulation` | Deterministic engine and boundary tests |
-| `research` | Hackathon rules, concept and implementation plan |
-| `docs` | Engine contract, implementation status, contributions and assets |
+| `packages/sim` | Pure deterministic engine: stock, trucks, roads, closures, deliveries, metrics, replay |
+| `packages/crew` | Roster, bounded briefings, Meta provider, scripted crew, deliberation and guardrail loop, NDJSON handler |
+| `packages/contracts` | Shared schemas and types |
+| `apps/web` | React + three.js town, command room, crew view, event log and decision replay |
+| `api/crew.ts` | Vercel function: rebuilds the run from approved commands, then lets the crew deliberate |
+| `scenarios/harbor-point.json` | The authored scenario: road graph, reports, closures and requests |
 
-The engine imports no renderer, clock, random generator or network client. Its exports are consumed directly by the preview now and can be reused on the server in the next milestone. Checkpoints are internal trusted records; they are not an untrusted file-import endpoint.
+The server never trusts the browser's world state. It replays the approved command history through the engine and builds every briefing from that result. The model can propose a plan, but it can't create supplies, open a closed road, overload a truck or move the clock.
 
-## Expected scenario outcomes
+## Honest limits
 
-| Result | Bridge route | Hill route |
-| --- | --- | --- |
-| School crates delivered by minute 9 | 0 | 6 |
-| School delivery completed | Minute 11 | Minute 8 |
-| Completed delivery lateness | 2 minutes | 0 minutes |
-| Final unmet demand | 6 crates | 6 crates |
-| Final idle trucks at depot | 1 | 1 |
+Harbor Point is **fictional**. Its outcomes describe this authored scenario, not real floods, and nothing here is emergency guidance or evidence of better real-world preparedness. The drill has one scenario and two trucks, with sessions held in memory. Voice, additional scenarios and facilitator tools are next.
 
-The bridge closes at minute 4. New entry is denied, including for a truck reaching its junction on that tick. A truck already on a closing edge can finish traversing it. Closed-route diversions use deterministic shortest paths. School receiving starts at minute 6. A delivered truck stays at its destination; the MVP does not automatically dispatch it again or return it to depot.
+See [implementation status](docs/implementation-status.md), the [engine contract](docs/simulation-engine.md), the [concept](research/crisiscraft-concept.md), [contributions](docs/contributions.md) and [assets and licences](docs/assets-and-licenses.md).
 
-The remaining East shelter demand is intentional: holding one truck in reserve constrains both runs. Metrics describe the authored simulation, not predicted real-world outcomes.
-
-See the [engine contract](docs/simulation-engine.md), [implementation status](docs/implementation-status.md) and [MVP plan](research/crisiscraft-mvp-implementation-plan.md).
-
-## Hackathon provenance
-
-This workspace initially contained research documents and no application code. The application and scenario are new work created during the event. [Contributions](docs/contributions.md) distinguish original work from third-party dependencies; [asset notes](docs/assets-and-licenses.md) record the scene's source. The repository must be public before submission; local setup does not establish public hosting or complete submission.
+Built during the Meta Global AI Developer Hackathon, October–November 2026.

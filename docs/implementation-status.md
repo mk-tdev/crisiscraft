@@ -1,31 +1,28 @@
 # CrisisCraft Implementation Status
 
-Updated 28 October 2026, Singapore time.
+Updated 30 October 2026, Singapore time.
 
-## Completed in the first implementation milestone
+## Brew-style rebuild (30 October)
 
-- npm workspaces and locked dependencies for React, Three.js, TypeScript, Zod, Vite and Vitest.
-- Shared schemas and a renderer-independent deterministic simulation package.
-- Harbor Point's versioned road graph, two trucks, stock, receiving outage, bridge closure and two supply requests.
-- Atomic approvals, revisions, idempotent retries, capacity and reserve rules.
-- Event logs, stable routing, metrics, role observation boundaries and checkpoint/replay functions.
-- Local 3D preview with manual route approval, clock controls and two-timeline comparison.
-- Automated engine checks and a successful production build.
+The command room was rebuilt around a crew of three role-bounded characters and the house style shared with Brew & Reason.
 
-Verification: 36 automated tests passed, strict TypeScript checking passed, and Vite produced a production build. Browser QA at 1280 × 720 verified bridge and hill approvals, run-to-end, reset, and comparison in both route directions. School completion appeared at minutes 11 and 8 respectively, matching the headless fixtures. A [comparison screenshot](screenshots/route-comparison.png) records the manual preview. No frame-rate benchmark or mobile-browser verification has been performed.
+- **Crew (`packages/crew`).** Priya (logistics), Malik (shelter) and June (field) each receive a briefing projected by the engine from their own observations. Reports run in parallel. Priya then plans from her briefing and what teammates said, the engine dry-runs the plan, and a refused plan gets one revision with the refusal reason. Turns stream to the browser as NDJSON.
+- **Meta Model API provider.** OpenAI-compatible Chat Completions at `https://api.meta.ai/v1`, `muse-spark-1.3` by default, schema-constrained JSON (`response_format: json_schema`), `reasoning_effort: low`. Muse Spark Open on Baseten works by changing `MODEL_BASE_URL` and `MODEL_NAME`.
+- **Scripted crew.** Without `MODEL_API_KEY`, a deterministic stand-in reads the same briefings and is labelled *Scripted crew · no model key* in the header.
+- **Server authority.** `/api/crew` rebuilds world state from the approved command history with `replay`; it never accepts client state. The same Node handler serves Vite dev and the Vercel function (`npm run build:vercel` → `.vercel/output`).
+- **Interface.** Light neutral UI with the orange accent; free-text orders with suggestions; streamed transcript with cited reports and "What they saw" prompt inspection; plan card gated by the rules check; Crew tab showing each role's knowledge; event log with Rewind; minute strip that only reveals past events and known deadlines; four concept cards; generalised decision replay with two synchronized 3D views and an event-grounded debrief.
+- **Town.** CC0 Poly Haven sky, textures and props (see [assets](assets-and-licenses.md)); rising water, closable bridge with barriers, school power state, crates matching stock and deliveries, procedural trucks and people, rain and lightning.
 
-The initial preview deliberately labels role reports as authored and Meta characters as disconnected. No live API call or deployment has been performed. There are no credentials in the application.
+## Verification
 
-## Next implementation milestone
+- `npm run check`: 48 tests (36 engine, 12 crew) pass, strict typecheck passes, production build succeeds.
+- Bundled Vercel function smoke-tested locally: streams 7 NDJSON lines ending in a validated hill-road plan.
+- Headless Chromium (SwiftShader) drove a full drill at 1440×900 with no console errors: order → reports → plan → approve → run to end → rewind → bridge order → decision replay (A on time at minute 8; B 2 minutes late after the bridge closure), plus a 390-px mobile pass. Screenshots: `docs/screenshots/town.jpg`, `crew.jpg`, `replay.jpg`.
 
-1. Add a Node session service around the pure engine, preserving atomic revisions and command IDs.
-2. Select an actually accessible Meta model and verify a live request using server-held credentials.
-3. Add free-text intent interpretation and three bounded role responses with runtime validation.
-4. Connect plan approval to server authority and durable session storage.
-5. Add persistence tests, provider-error integration checks and a deployed browser smoke test.
+## Not yet done
 
-Voice, speech, extra scenarios and richer effects remain optional after these foundations. The public repository, final video and submission are still outstanding release tasks.
+1. **A live Meta model run.** No API key was available; request shape is unit-tested against a mocked endpoint only. The prompts need tuning against real `muse-spark-1.3` output once credits are claimed.
+2. Public deployment, public repository, demo video and submission form.
+3. Voice, extra scenarios and facilitator notes remain optional.
 
-## Relationship to the original plan
-
-The simulation portion of W2 is complete. W3 has a manual 3D workflow and basic comparison rendering, and W5 has tested engine primitives. W1's live model access, W4's model integration and W6's persistent deployment remain pending. These are partial work-package results, not completion of the full MVP.
+The older screenshots (`command-*.png`, `route-comparison.png`) and `command-room-verification.md` describe the previous UI.

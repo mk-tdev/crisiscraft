@@ -1,6 +1,6 @@
 # Meta Global AI Developer Hackathon Research
 
-Research date: 26 October 2026. Event year: 2026. Local planning timezone: Asia/Singapore.
+Research date: 26 October 2026; re-checked against the live participant guide on 31 October 2026. Event year: 2026. Local planning timezone: Asia/Singapore.
 
 The hackathon is a remote, worldwide event hosted by Meta and Cerebral Valley, with a stated $1,000,000 cash prize pool. Participation is free for selected applicants. A competitive submission needs a working product that uses Meta models, solves a meaningful problem within one of two themes, and clearly demonstrates the work created during the event. The submission deadline is **Wednesday 4 November, 9:00 PM ET**, equivalent to **Thursday 5 November, 10:00 AM Singapore time**. [Participant guide][guide] · [Event overview][event]
 
@@ -73,8 +73,8 @@ The guide says session times are Eastern Time. The Singapore conversions below u
 | Application deadline | 25 Oct, 11:59 PM, or earlier at capacity | 26 Oct, 11:59 AM |
 | Approval notification by | 26 Oct, 9:00 AM | 26 Oct, 9:00 PM |
 | Kickoff | Mon 26 Oct, noon | Tue 27 Oct, midnight |
-| Agents 101 workshop | Tue 27 Oct, noon–1:00 PM | Wed 28 Oct, midnight–1:00 AM |
-| Agents 102 workshop | Wed 28 Oct, noon–1:00 PM | Thu 29 Oct, midnight–1:00 AM |
+| Agents 101 workshop | Tue 27 Oct, noon–12:30 PM | Wed 28 Oct, midnight–12:30 AM |
+| Agents 102 workshop | Wed 28 Oct, noon–12:30 PM | Thu 29 Oct, midnight–12:30 AM |
 | Fireworks workshop | Fri 30 Oct, noon–1:00 PM | Sat 31 Oct, midnight–1:00 AM |
 | Last full day for submission troubleshooting | Tue 3 Nov | Date only; no exact cutoff stated |
 | Submission and Meta credit claim deadline | Wed 4 Nov, 9:00 PM | Thu 5 Nov, 10:00 AM |
@@ -144,7 +144,7 @@ Partner credits are discretionary and not guaranteed. [Participant guide, sectio
 | --- | --- | --- |
 | Baseten | $100 and a 2M tokens-per-minute rate limit; up to 2,000 participants, reviewed by use case; individual awards, not team awards | [Request Baseten credits](https://docs.google.com/forms/d/e/1FAIpQLSfM7gcK8yMZEmAGq6DbTyiuv2c71IH7CKCy0fXGIfUED1qxVQ/viewform) |
 | Modal | $100 for the first 1,000 participants; endpoints, serverless GPUs, sandboxes and training infrastructure | [Request Modal credits](https://docs.google.com/forms/d/e/1FAIpQLSe_GDPtLZsdA57xPhFcOCi_yLjPf8HRxMIQJ5V7ystoKSqWCQ/viewform) |
-| Fireworks | $25 for selected teams; shortlisted teams receive redemption details by email | [Request Fireworks credits](https://docs.google.com/forms/d/e/1FAIpQLSdPQTTES8_nhavzZkOrebVNYbM1FumWLdpeZx8ZSNe4QLXKPA/viewform) |
+| Fireworks | $100 per selected team (the guide said $25 on 26 Oct); shortlisted teams receive redemption details by email | [Request Fireworks credits](https://docs.google.com/forms/d/e/1FAIpQLSdPQTTES8_nhavzZkOrebVNYbM1FumWLdpeZx8ZSNe4QLXKPA/viewform) |
 
 **Baseten model identifier:** For this hackathon, the guide explicitly instructs participants to use `meta-models/muse-spark-open-1026`, replacing the `meta-models/muse-spark-open` identifier shown in its general documentation.
 
