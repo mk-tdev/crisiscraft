@@ -1,6 +1,6 @@
 import type { Role, Scenario, WorldState } from '@crisiscraft/contracts';
 import { roleContext } from '@crisiscraft/sim';
-import { crew } from './roster';
+import { crew, roadNames, truckNames } from './roster';
 
 const label = (scenario: Scenario, id: string) => scenario.nodes.find(n => n.id === id)?.label ?? id;
 
@@ -15,7 +15,7 @@ export function briefing(scenario: Scenario, state: WorldState, role: Role) {
     minute: state.tick,
     you: crew[role],
     observations: own.observations.map(o => ({
-      id: o.id, about: scenario.edges.some(e => e.id === o.entityId) ? `road ${o.entityId}` : label(scenario, o.entityId),
+      id: o.id, about: scenario.edges.some(e => e.id === o.entityId) ? `road ${o.entityId} (${roadNames[o.entityId] ?? o.entityId})` : label(scenario, o.entityId),
       fact: o.fact, observedMinute: o.observedTick, ageMinutes: state.tick - o.observedTick,
     })),
     board: {
@@ -25,7 +25,7 @@ export function briefing(scenario: Scenario, state: WorldState, role: Role) {
         complete: r.completedTick !== null,
       })),
       trucks: Object.values(state.vehicles).map(v => ({
-        id: v.id, capacity: v.capacity, status: v.status, at: v.leg ? `on road ${v.leg.edgeId}` : label(scenario, v.node),
+        id: v.id, name: truckNames[v.id] ?? v.id, capacity: v.capacity, status: v.status, at: v.leg ? `on the ${roadNames[v.leg.edgeId] ?? v.leg.edgeId}` : label(scenario, v.node),
         cargo: v.cargo, assignedTo: v.requestId,
       })),
       reserveRule: `Keep at least ${state.reserveMinimum} truck idle at the depot.`,
@@ -34,7 +34,7 @@ export function briefing(scenario: Scenario, state: WorldState, role: Role) {
     ...(role === 'logistics' ? {
       roadMap: {
         places: scenario.nodes.map(n => ({ id: n.id, name: n.label })),
-        roads: scenario.edges.map(e => ({ id: e.id, between: [e.from, e.to], minutes: e.minutes })),
+        roads: scenario.edges.map(e => ({ id: e.id, name: roadNames[e.id] ?? e.id, between: [e.from, e.to], minutes: e.minutes })),
         depot: scenario.depot,
       },
     } : {}),

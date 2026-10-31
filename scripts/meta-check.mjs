@@ -10,15 +10,17 @@ const started = Date.now();
 const chat = await fetch(`${base}/chat/completions`, {
   method: 'POST', headers,
   body: JSON.stringify({
-    model, reasoning_effort: 'low', max_completion_tokens: 200,
+    model, reasoning_effort: 'low', max_completion_tokens: 2000,
     messages: [{ role: 'user', content: 'You are a flood field lead. In one sentence, report the north bridge status.' }],
     response_format: { type: 'json_schema', json_schema: { name: 'report', schema: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } } },
   }),
 });
 const body = await chat.json().catch(() => ({}));
 if (!chat.ok) { console.error(`✗ ${model}: HTTP ${chat.status}`, JSON.stringify(body).slice(0, 300)); process.exit(1); }
-console.log(`✓ ${model} structured output in ${Date.now() - started} ms:`, JSON.parse(body.choices[0].message.content).message);
-console.log(`  tokens: ${body.usage?.prompt_tokens ?? '?'} in / ${body.usage?.completion_tokens ?? '?'} out`);
+const content = body.choices?.[0]?.message?.content;
+if (!content) { console.error(`✗ ${model}: no content (finish_reason ${body.choices?.[0]?.finish_reason}); reasoning may have used the token budget.`); process.exit(1); }
+console.log(`✓ ${model} structured output in ${Date.now() - started} ms:`, JSON.parse(content).message);
+console.log(`  tokens: ${body.usage?.prompt_tokens ?? '?'} in / ${body.usage?.completion_tokens ?? '?'} out (${body.usage?.completion_tokens_details?.reasoning_tokens ?? '?'} reasoning)`);
 
 // Half a second of silence proves the transcribe endpoint and auth; an empty transcript is expected.
 const rate = 24000, n = rate / 2, wav = new Uint8Array(44 + n * 2), v = new DataView(wav.buffer);

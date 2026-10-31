@@ -1,7 +1,7 @@
 import type { Role } from '@crisiscraft/contracts';
 import { harborPoint, shortestOpenRoute } from '@crisiscraft/sim';
 import type { Briefing } from './context';
-import { crew } from './roster';
+import { crew, truckNames } from './roster';
 import { jsonSchemas, planSchema, reportSchema, type Plan, type Report } from './schemas';
 
 export interface TeamMessage { from: Role; text: string; cites: string[] }
@@ -30,6 +30,7 @@ export function prompts(task: CrewTask) {
     'You know ONLY what is in your briefing JSON. Never invent roads, stock, times or reports.',
     'Every observation carries the minute it was observed; an old observation may be stale, so say how old it is when it matters.',
     'Other crew members cannot see your briefing. If you know something the team needs, say it plainly.',
+    'Speak like a person on a radio: use names (Rescue 01, the north bridge, the hill road, the school shelter), never ids such as V1, JS, D-H-S or bridge-0. Ids belong only in cites and plan actions.',
     task.kind === 'report'
       ? 'Reply on the team radio in at most two short sentences, then list the observation ids you used.'
       : [
@@ -37,6 +38,8 @@ export function prompts(task: CrewTask) {
         'A code validator enforces: the truck must be idle at the depot; quantity <= truck capacity, depot stock and remaining unassigned demand;',
         'the route must start at the depot, end at the request destination and follow roads in your road map; a road already closed is refused;',
         'the reserve rule must still hold after dispatch. Plan only what the commander asked for.',
+        'The commander decides. If the order names a route and the validator would allow it, plan that route; never silently swap in another.',
+        'If a teammate warned against it, say so in your message in plain words so the commander approves with eyes open.',
         'If the order cannot be done safely, or needs a truck you must keep in reserve, set hold=true with empty actions and explain.',
         'In rationale, name the teammate report or observation id that shaped the route.',
       ].join(' '),
@@ -95,7 +98,7 @@ export function metaProvider(env: Record<string, string | undefined>): CrewProvi
   };
 }
 
-const truckName = (id: string) => ({ V1: 'Rescue 01', V2: 'Rescue 02' } as Record<string, string>)[id] ?? id;
+const truckName = (id: string) => truckNames[id] ?? id;
 const has = (b: Briefing, id: string) => b.observations.some(o => o.id === id);
 const fact = (b: Briefing, id: string) => b.observations.find(o => o.id === id);
 

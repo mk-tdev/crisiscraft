@@ -30,3 +30,9 @@ export const crew: Record<Role, CrewMember> = {
 };
 
 export const roles: Role[] = ['logistics', 'shelter', 'field'];
+
+/** Radio names for the things the engine identifies by id. */
+export const truckNames: Record<string, string> = { V1: 'Rescue 01', V2: 'Rescue 02' };
+export const roadNames: Record<string, string> = {
+  DJ: 'Harbour Road', JS: 'north bridge', DH: 'Mill Lane', HS: 'hill road', JH: 'ridge link', DE: 'coast road',
+};
