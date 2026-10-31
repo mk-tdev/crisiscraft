@@ -338,3 +338,15 @@ select { appearance: none; padding: 7px 10px; font-family: var(--mono); font-siz
 .town-loading { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(#dfe5e8, #c8d1d5); }
 .town-loading span { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); animation: blink 1.4s infinite; }
 @media (max-width: 1280px) { .conditions li:nth-child(4) { display: none; } }
+
+/* Push-to-talk radio: Muse Voice Transcribe */
+.command-input .mic { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; border: 1px solid var(--line-strong); background: #fff; color: var(--ink); cursor: pointer; }
+.command-input .mic:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.command-input .mic.listening { background: var(--accent); border-color: var(--accent); color: #fff; animation: mic-pulse 1.2s ease-in-out infinite; }
+.command-input .mic.transcribing { opacity: 0.6; cursor: progress; }
+@keyframes mic-pulse { 0%, 100% { box-shadow: 0 0 0 0 #ff5f1f55; } 50% { box-shadow: 0 0 0 7px #ff5f1f00; } }
+.heard { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
+.heard svg { color: var(--accent); flex: none; }
+.heard small { color: var(--faint); }
+.heard.error { color: #c2410c; }
+@media (prefers-reduced-motion: reduce) { .command-input .mic.listening { animation: none; } }

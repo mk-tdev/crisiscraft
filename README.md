@@ -48,6 +48,7 @@ Every turn on the radio is a separate call to the **Meta Model API** (`muse-spar
 
 - **Three role reports run in parallel.** Each report sees only its own briefing, projected by the engine from the world state. The future schedule, other roles' private reports and the true road status are never in the prompt.
 - **A planning turn** sees Priya's briefing plus what her teammates said on the radio. It must return a structured plan: truck, request, quantity and route.
+- **Spoken orders** go through **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`). Click the mic, speak, click again: the browser records a 24 kHz WAV, the server forwards it to `/v1/asr/transcribe` in push-to-talk mode, with the crew's names and the town's roads as vocabulary hints, and the transcript becomes your order.
 - **A guardrail loop** dry-runs that plan in the deterministic engine. If the plan is refused, the reason goes back to the model for one revision. Two refusals mean nothing happens, and the crew says so.
 
 Turns stream to the browser as they arrive. Each turn shows its latency, token count and the exact briefing the model received. Muse Spark Open on Baseten works through the same OpenAI-compatible interface by changing `MODEL_BASE_URL` and `MODEL_NAME`.
@@ -68,7 +69,8 @@ npm run dev
 Open **http://127.0.0.1:5173**. The crew API runs inside the dev server at `/api/crew`, the same handler that ships as the Vercel function.
 
 ```sh
-npm run check             # 44 engine and crew tests + strict typecheck + production build
+npm run check             # 52 engine, crew and voice tests + strict typecheck + production build
+npm run meta:check        # one live Muse Spark call and one Voice Transcribe call with your key
 npm run build:vercel      # static app + bundled crew function in .vercel/output
 ```
 

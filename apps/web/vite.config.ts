@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 
-/** Serves the same crew handler as the Vercel Function during `npm run dev`. */
+/** Serves the same crew and voice handlers as the Vercel Functions during `npm run dev`. */
 function crewApi(env: Record<string, string>): Plugin {
   return {
     name: 'crisiscraft-crew-api',
@@ -12,6 +12,10 @@ function crewApi(env: Record<string, string>): Plugin {
       server.middlewares.use('/api/crew', async (req, res) => {
         const { nodeCrewHandler } = await server.ssrLoadModule('@crisiscraft/crew') as typeof import('@crisiscraft/crew');
         await nodeCrewHandler(env)(req, res);
+      });
+      server.middlewares.use('/api/voice', async (req, res) => {
+        const { nodeVoiceHandler } = await server.ssrLoadModule('@crisiscraft/crew') as typeof import('@crisiscraft/crew');
+        await nodeVoiceHandler(env)(req, res);
       });
     },
   };

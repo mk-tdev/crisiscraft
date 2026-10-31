@@ -8,11 +8,18 @@ export interface ProviderInfo {
   live: boolean;
 }
 
-export async function crewStatus(): Promise<ProviderInfo | null> {
+export interface CrewStatus {
+  provider: ProviderInfo;
+  /** True when spoken orders can go through Muse Voice Transcribe. */
+  voice: boolean;
+}
+
+export async function crewStatus(): Promise<CrewStatus | null> {
   try {
     const response = await fetch("/api/crew");
     if (!response.ok) return null;
-    return ((await response.json()) as { provider: ProviderInfo }).provider;
+    const body = (await response.json()) as Partial<CrewStatus>;
+    return body.provider ? { provider: body.provider, voice: Boolean(body.voice) } : null;
   } catch {
     return null;
   }

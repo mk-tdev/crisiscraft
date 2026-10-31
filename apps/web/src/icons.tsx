@@ -25,7 +25,8 @@ export type IconName =
   | "download"
   | "rain"
   | "eye"
-  | "chevron";
+  | "chevron"
+  | "mic";
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
     map: (
@@ -65,6 +66,12 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       </>
     ),
     arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
+    mic: (
+      <>
+        <rect x="9" y="3" width="6" height="11" rx="3" />
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+      </>
+    ),
     radio: (
       <>
         <circle cx="12" cy="12" r="2" />

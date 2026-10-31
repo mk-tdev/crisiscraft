@@ -58,6 +58,7 @@ export function App() {
   const { world, timeline, timelines, active } = drill;
   const crewChat = useCrew(world.tick, world.revision);
   const [provider, setProvider] = useState<ProviderInfo | null | undefined>(undefined);
+  const [voice, setVoice] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [radioOpen, setRadioOpen] = useState(true);
   const [briefing, setBriefing] = useState(firstVisit);
@@ -68,7 +69,12 @@ export function App() {
   const [weather, setWeather] = useState(true);
   const [comparing, setComparing] = useState(false);
 
-  useEffect(() => { void crewStatus().then(setProvider); }, []);
+  useEffect(() => {
+    void crewStatus().then((status) => {
+      setProvider(status?.provider ?? null);
+      setVoice(status?.voice ?? false);
+    });
+  }, []);
   const closeBriefing = useCallback(() => {
     setBriefing(false);
     try { localStorage.setItem(BRIEFED, "1"); } catch { /* private mode: show again next time */ }
@@ -219,6 +225,7 @@ export function App() {
           state={crewChat.state}
           ended={drill.ended}
           stale={crewChat.stale}
+          voice={voice}
           onAsk={(order) => { drill.setPlaying(false); setRadioOpen(true); void crewChat.ask(order, timeline.decisions.map(({ tick, command }) => ({ tick, command }))); }}
           onApprove={approve}
           onDismiss={crewChat.clear}

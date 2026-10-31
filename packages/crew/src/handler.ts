@@ -3,6 +3,7 @@ import { commandSchema, SimulationError } from '@crisiscraft/contracts';
 import { harborPoint, replay } from '@crisiscraft/sim';
 import { deliberate, type CrewTurn } from './deliberate';
 import { chooseProvider } from './providers';
+import { voiceAvailable } from './voice';
 
 const requestSchema = z.object({
   minute: z.number().int().min(0).max(harborPoint.horizon),
@@ -15,7 +16,7 @@ export interface HandlerResult { status: number; body: unknown }
 
 export function crewStatus(env: Env) {
   const p = chooseProvider(env);
-  return { provider: { id: p.id, label: p.label, model: p.model, live: p.live } };
+  return { provider: { id: p.id, label: p.label, model: p.model, live: p.live }, voice: voiceAvailable(env) };
 }
 
 /**

@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "check": "npm run test && npm run build",
     "build:vercel": "npm run build && node scripts/build-vercel.mjs",
-    "assets:fetch": "python3 scripts/fetch-assets.py"
+    "assets:fetch": "python3 scripts/fetch-assets.py",
+    "meta:check": "node --env-file-if-exists=.env scripts/meta-check.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
