@@ -1,84 +1,240 @@
-import { Component, type ReactNode, Suspense, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Group, MathUtils } from 'three';
-import type { WorldState } from '@crisiscraft/contracts';
-import { harborPoint, vehiclePosition } from '@crisiscraft/sim';
+import { Component, type ReactNode, Suspense, useState } from "react";
+import { Canvas } from "@react-three/fiber";
+import { ACESFilmicToneMapping } from "three";
+import type { WorldState } from "@crisiscraft/contracts";
+import { Depot, EastShelter, Neighbourhood, SchoolShelter } from "./scene/buildings";
+import { OuterTown } from "./scene/district";
+import { CameraRig, type CameraView } from "./scene/camera";
+import { Sky, Terrain } from "./scene/environment";
+import { CrewChip, PlaceChip, type Tone } from "./scene/labels";
+import { GROUND, type Point, crewSpots, sites } from "./scene/layout";
+import { Person, Townsfolk, look } from "./scene/people";
+import { BridgeClosure, RouteGlow, Roads } from "./scene/roads";
+import { Truck, truckPosition } from "./scene/vehicles";
+import { Floodwater } from "./scene/water";
+import { Lightning, Rain } from "./scene/weather";
 
-type Point = [number, number, number];
-
-function Road({ from, to, closed, bridge }: { from: Point; to: Point; closed: boolean; bridge: boolean }) {
-  const dx = to[0] - from[0];
-  const dz = to[2] - from[2];
-  const length = Math.hypot(dx, dz);
-  return <group position={[(from[0] + to[0]) / 2, bridge ? 0.24 : 0.15, (from[2] + to[2]) / 2]} rotation={[0, Math.atan2(dx, dz), 0]}>
-    <mesh receiveShadow><boxGeometry args={[0.65, 0.14, length]} /><meshStandardMaterial color={closed ? '#d9765d' : bridge ? '#839a92' : '#52675f'} /></mesh>
-    <mesh position={[0, 0.08, 0]}><boxGeometry args={[0.035, 0.015, length * 0.9]} /><meshStandardMaterial color="#d5d9b9" /></mesh>
-    {bridge && [-0.38, 0.38].map(x => <mesh key={x} position={[x, 0.19, 0]}><boxGeometry args={[0.06, 0.25, length]} /><meshStandardMaterial color="#b9c3b1" /></mesh>)}
-    {closed && <group position={[0, 0.35, 0]} rotation={[0, Math.PI / 4, 0]}>
-      <mesh><boxGeometry args={[1.2, 0.17, 0.15]} /><meshStandardMaterial color="#f7b08b" /></mesh>
-      <mesh rotation={[0, Math.PI / 2, 0]}><boxGeometry args={[1.2, 0.17, 0.15]} /><meshStandardMaterial color="#f7b08b" /></mesh>
-    </group>}
-  </group>;
+export type { CameraView } from "./scene/camera";
+export type Selection = "D" | "S" | "E" | "JS" | "V1" | "V2";
+export type CrewRole = "logistics" | "shelter" | "field";
+export interface CrewMarker {
+  role: CrewRole;
+  name: string;
+  title: string;
+  status: "idle" | "thinking" | "speaking";
+  line?: string;
+}
+export interface TownProps {
+  state: WorldState;
+  progress?: number;
+  cameraView?: CameraView;
+  cameraRevision?: number;
+  route?: string[];
+  selected?: Selection | null;
+  onSelect?: (id: Selection) => void;
+  crew?: CrewMarker[];
+  labels?: boolean;
+  weather?: boolean;
+  compact?: boolean;
 }
 
-function Building({ x, z, depot, ready }: { x: number; z: number; depot: boolean; ready: boolean }) {
-  return <group position={[x, 0.23, z]}>
-    <mesh position={[0, 0.5, 0]} castShadow receiveShadow><boxGeometry args={[1.8, 1, 1.35]} /><meshStandardMaterial color={depot ? '#ddd3a7' : '#e6e1c6'} /></mesh>
-    <mesh position={[0, 1.1, 0]} rotation={[0, Math.PI / 4, 0]} castShadow><coneGeometry args={[1.5, 0.6, 4]} /><meshStandardMaterial color={depot ? '#53695c' : '#ab654d'} /></mesh>
-    <mesh position={[0, 0.35, 0.69]}><boxGeometry args={[0.4, 0.7, 0.05]} /><meshStandardMaterial color="#274d47" /></mesh>
-    {[-0.6, 0.6].map(offset => <mesh key={offset} position={[offset, 0.65, 0.69]}><boxGeometry args={[0.27, 0.3, 0.06]} /><meshStandardMaterial color={ready ? '#f4ce84' : '#48645d'} emissive={ready ? '#9e803f' : '#000000'} emissiveIntensity={0.3} /></mesh>)}
-    <mesh position={[1.3, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.25, 0.35, 24]} /><meshStandardMaterial color={ready ? '#b1d2b6' : '#eea275'} /></mesh>
-  </group>;
-}
+/** Each crew member has a distinct rain jacket so they read at a glance in the scene. */
+const crewLook = {
+  logistics: look(301, { jacket: "#f2611d", vest: true, hood: false, umbrella: undefined, skin: "#b07752" }),
+  shelter: look(302, { jacket: "#2f6fe4", vest: false, hood: true, umbrella: undefined, skin: "#8a5a3b" }),
+  field: look(303, { jacket: "#e8a317", vest: true, hood: true, umbrella: undefined, skin: "#f1c7a5" }),
+};
+const crewFacing: Record<CrewRole, number> = { logistics: 0.6, shelter: Math.PI * 0.85, field: Math.PI * 0.6 };
 
-function Truck({ state, id, offset }: { state: WorldState; id: string; offset: number }) {
-  const group = useRef<Group>(null);
-  const truck = state.vehicles[id]!;
-  const [x, z] = vehiclePosition(harborPoint, truck, state.tick);
-  useFrame((_frame, delta) => {
-    if (!group.current) return;
-    group.current.position.x = MathUtils.damp(group.current.position.x, x, 10, delta);
-    group.current.position.z = MathUtils.damp(group.current.position.z, z + offset, 10, delta);
-  });
-  return <group ref={group} position={[x, 0.45, z + offset]}>
-    <mesh castShadow><boxGeometry args={[0.8, 0.4, 0.48]} /><meshStandardMaterial color={id === 'V1' ? '#eaa26d' : '#bed5b7'} /></mesh>
-    <mesh position={[0.26, 0.29, 0]} castShadow><boxGeometry args={[0.28, 0.25, 0.44]} /><meshStandardMaterial color="#e4e4ca" /></mesh>
-    {[-0.25, 0.25].flatMap(a => [-0.26, 0.26].map(b => <mesh key={`${a}-${b}`} position={[a, -0.18, b]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.12, 0.12, 0.1, 10]} /><meshStandardMaterial color="#203a35" /></mesh>))}
-    {truck.cargo > 0 && <mesh position={[-0.18, 0.3, 0]}><boxGeometry args={[0.3, 0.2, 0.32]} /><meshStandardMaterial color="#a27645" /></mesh>}
-  </group>;
-}
-
-function Scene({ state }: { state: WorldState }) {
-  return <>
-    <color attach="background" args={['#243e39']} />
-    <ambientLight intensity={1.6} />
-    <directionalLight position={[4, 14, 5]} intensity={2.6} castShadow shadow-mapSize={[1024, 1024]} />
-    <mesh position={[0, -0.5, 1]} receiveShadow><boxGeometry args={[24, 0.8, 18]} /><meshStandardMaterial color="#22332e" /></mesh>
-    <mesh position={[0, 0, 1]} receiveShadow><boxGeometry args={[23.7, 0.3, 17.7]} /><meshStandardMaterial color="#6e8569" /></mesh>
-    <mesh position={[0, 0.17, -3.6]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[5.7 + state.tick * 0.035, 14]} /><meshStandardMaterial color="#5b9b99" transparent opacity={0.7} roughness={0.3} /></mesh>
-    {harborPoint.edges.map(e => {
-      const a = harborPoint.nodes.find(n => n.id === e.from)!;
-      const b = harborPoint.nodes.find(n => n.id === e.to)!;
-      return <Road key={e.id} from={[a.x, 0, a.z]} to={[b.x, 0, b.z]} closed={!state.roads[e.id]} bridge={e.id === 'JS'} />;
-    })}
-    {harborPoint.nodes.filter(n => n.kind !== 'junction').map(n => <Building key={n.id} x={n.x} z={n.z} depot={n.kind === 'depot'} ready={state.receiving[n.id]!} />)}
-    {[-10, -9, -6, -4, 0, 3, 8, 10].map((x, i) => <group key={x} position={[x, 0.2, i % 2 === 0 ? 8 : -6]}>
-      <mesh position={[0, 0.45, 0]}><cylinderGeometry args={[0.08, 0.12, 0.9, 6]} /><meshStandardMaterial color="#574c36" /></mesh>
-      <mesh position={[0, 1.2, 0]} castShadow><coneGeometry args={[0.65, 1.7, 7]} /><meshStandardMaterial color="#305949" /></mesh>
-    </group>)}
-    <Truck state={state} id="V1" offset={0.6} />
-    <Truck state={state} id="V2" offset={-0.6} />
-  </>;
+function Scene({
+  state,
+  progress = 0,
+  cameraView = "overview",
+  cameraRevision = 0,
+  route = [],
+  selected = null,
+  onSelect,
+  crew = [],
+  labels = true,
+  weather = true,
+  compact = false,
+  root,
+}: TownProps & { root: HTMLDivElement | null }) {
+  const bridgeClosed = state.roads.JS === false;
+  const schoolPowered = Boolean(state.receiving.S);
+  const school = state.requests.school;
+  const east = state.requests.east;
+  const showTruck = (id: string) => {
+    const v = state.vehicles[id]!;
+    return v.status !== "idle" || v.cargo > 0 || v.node !== "D";
+  };
+  const placeChips: { id: Selection; at: Point; name: string; detail: string; tone: Tone }[] = [
+    {
+      id: "D",
+      at: [sites.D.at[0] - 0.6, 2.5, sites.D.at[2] - 0.6],
+      name: "Supply depot",
+      detail: `${state.stock} crates on hand`,
+      tone: state.stock > 0 ? "ok" : "idle",
+    },
+    {
+      id: "S",
+      at: [sites.S.at[0], 2.15, sites.S.at[2]],
+      name: "School shelter",
+      detail: school?.completedTick != null
+        ? "Supplied"
+        : schoolPowered
+          ? `Receiving · ${school?.delivered ?? 0}/${school?.quantity ?? 6}`
+          : "No power · can't unload",
+      tone: school?.completedTick != null ? "ok" : schoolPowered ? "warn" : "alert",
+    },
+    {
+      id: "E",
+      at: [sites.E.at[0], 1.95, sites.E.at[2]],
+      name: "East shelter",
+      detail: east
+        ? east.completedTick != null
+          ? "Supplied"
+          : `Needs ${east.quantity - east.delivered} crates`
+        : "Standing by",
+      tone: east ? (east.completedTick != null ? "ok" : "warn") : "idle",
+    },
+    {
+      id: "JS",
+      at: [0.5, 1.45, -3],
+      name: "North bridge",
+      detail: bridgeClosed ? "Closed · flooded" : state.tick >= 1 ? "Open · flood risk" : "Open",
+      tone: bridgeClosed ? "alert" : state.tick >= 1 ? "warn" : "ok",
+    },
+  ];
+  return (
+    <>
+      <Sky shadows={!compact} />
+      {weather && <Lightning />}
+      <Terrain />
+      <Floodwater tick={state.tick + progress} bridgeClosed={bridgeClosed} />
+      <Roads />
+      <BridgeClosure closed={bridgeClosed} warning={state.tick >= 1} />
+      {route.length > 1 && <RouteGlow route={route} roads={state.roads} />}
+      <Neighbourhood compact={compact} />
+      <OuterTown tick={state.tick + progress} compact={compact} />
+      <Depot stock={state.stock} />
+      <SchoolShelter powered={schoolPowered} delivered={school?.delivered ?? 0} />
+      <EastShelter delivered={east?.delivered ?? 0} />
+      <Townsfolk compact={compact} schoolOpen={schoolPowered} />
+      {crew.map((member) => (
+        <Person
+          key={member.role}
+          at={crewSpots[member.role]}
+          facing={crewFacing[member.role]}
+          appearance={crewLook[member.role]}
+          active={member.status === "speaking"}
+          phase={member.role.length}
+        />
+      ))}
+      {(["V1", "V2"] as const).map((id) => (
+        <Truck
+          key={id}
+          state={state}
+          id={id}
+          progress={progress}
+          selected={selected === id}
+          onSelect={onSelect ? () => onSelect(id) : undefined}
+        />
+      ))}
+      {weather && !compact && <Rain />}
+      <CameraRig view={cameraView} state={state} progress={progress} revision={cameraRevision} compact={compact} />
+      {root && labels && (
+        <>
+          {placeChips.map((chip) => (
+            <PlaceChip
+              key={chip.id}
+              root={root}
+              at={chip.at}
+              name={chip.name}
+              detail={chip.detail}
+              tone={chip.tone}
+              selected={selected === chip.id}
+              onSelect={onSelect ? () => onSelect(chip.id) : undefined}
+            />
+          ))}
+          {(["V1", "V2"] as const).filter(showTruck).map((id) => {
+            const v = state.vehicles[id]!;
+            return (
+              <PlaceChip
+                key={id}
+                root={root}
+                at={() => {
+                  const [x, z] = truckPosition(state, id, progress);
+                  return [x, 1.05, z];
+                }}
+                name={id === "V1" ? "Rescue 01" : "Rescue 02"}
+                detail={`${v.status}${v.cargo ? ` · ${v.cargo} crates` : ""}`}
+                tone={v.status === "stranded" ? "alert" : v.status === "travelling" ? "warn" : "ok"}
+                selected={selected === id}
+                onSelect={onSelect ? () => onSelect(id) : undefined}
+              />
+            );
+          })}
+          {!compact && crew.map((member) => {
+            const spot = crewSpots[member.role];
+            return (
+              <CrewChip
+                key={member.role}
+                root={root}
+                at={[spot[0], GROUND + 0.78, spot[2]]}
+                name={member.name}
+                title={member.title}
+                status={member.status}
+                line={member.line}
+                bubbles={!compact}
+              />
+            );
+          })}
+        </>
+      )}
+    </>
+  );
 }
 
 class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? <p className="scene-fallback">3D rendering is unavailable. The simulation, reports and metrics remain usable below.</p> : this.props.children; }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <p className="scene-fallback">
+        3D rendering is unavailable. Use the mission controls, crew reports and event log to continue.
+      </p>
+    ) : (
+      this.props.children
+    );
+  }
 }
 
-export function Town({ state }: { state: WorldState }) {
-  return <SceneBoundary><Canvas shadows orthographic camera={{ position: [18, 21, 23], zoom: 22, near: 0.1, far: 150 }} dpr={[1, 1.5]} fallback={<p className="scene-fallback">Town map. Simulation state is also available in the controls, reports and event log.</p>}>
-    <Suspense fallback={null}><Scene state={state} /></Suspense>
-  </Canvas></SceneBoundary>;
+export function Town(props: TownProps) {
+  const [root, setRoot] = useState<HTMLDivElement | null>(null);
+  const compact = Boolean(props.compact);
+  return (
+    <div className={`town-render${compact ? " compact" : ""}`}>
+      <SceneBoundary>
+        <Canvas
+          shadows={!compact}
+          camera={{ position: [16, 20, 24], fov: 36, near: 0.1, far: 520 }}
+          dpr={compact ? [1, 1.25] : [1, 1.75]}
+          gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
+          fallback={
+            <p className="scene-fallback">
+              Harbor Point town map. Use the location list and mission controls to inspect the simulation.
+            </p>
+          }
+        >
+          <Suspense fallback={null}>
+            <Scene {...props} root={root} />
+          </Suspense>
+        </Canvas>
+      </SceneBoundary>
+      <div className="town-labels" ref={setRoot} />
+    </div>
+  );
 }

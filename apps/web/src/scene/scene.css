@@ -1,0 +1,230 @@
+/* Harbor Point scene overlay — Brew & Reason chip language: white glass, hairline border,
+   Inter, near-black names with an espresso-orange tracked role. */
+.town-render {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  overflow: hidden;
+  background: linear-gradient(#c7cfd3, #aeb9bf);
+}
+.town-render canvas {
+  display: block;
+  touch-action: none;
+}
+.town-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  font-family: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.town-labels > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+.scene-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: #52525b;
+  font-size: 13px;
+}
+
+.cc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid #18181b14;
+  border-radius: 999px;
+  background: #ffffffe6;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 2px #18181b0d, 0 6px 18px #18181b14;
+  color: #18181b;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+  transform-origin: 50% 100%;
+}
+button.cc-chip {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+button.cc-chip:hover {
+  border-color: #f2611d66;
+}
+button.cc-chip:focus-visible {
+  outline: 2px solid #f2611d;
+  outline-offset: 2px;
+}
+.cc-chip.cc-selected {
+  border-color: #f2611d;
+  box-shadow: 0 0 0 3px #f2611d26, 0 6px 18px #18181b1f;
+}
+.cc-chip-text {
+  display: grid;
+  text-align: left;
+}
+.cc-chip strong {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.cc-chip small {
+  margin-top: 1px;
+  color: #71717a;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.cc-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a1a1aa;
+}
+.cc-dot.cc-ok {
+  background: #2f9e6b;
+  box-shadow: 0 0 0 3px #2f9e6b26;
+}
+.cc-dot.cc-warn {
+  background: #e8a317;
+  box-shadow: 0 0 0 3px #e8a31730;
+}
+.cc-dot.cc-alert {
+  background: #e5484d;
+  box-shadow: 0 0 0 3px #e5484d30;
+  animation: cc-pulse 1.1s ease-in-out infinite;
+}
+
+/* Crew: "Priya LOGISTICS" with an initial avatar; speech appears as a bubble above. */
+.cc-crew-anchor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.cc-crew {
+  padding: 4px 11px 4px 4px;
+}
+.cc-crew em {
+  color: #f2611d;
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.cc-avatar {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #18181b;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.cc-crew.cc-thinking .cc-avatar {
+  background: #f2611d;
+}
+.cc-crew.cc-speaking {
+  border-color: #f2611d80;
+}
+.cc-thinking {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 2px;
+}
+.cc-thinking i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f2611d;
+  animation: cc-bounce 1s ease-in-out infinite;
+}
+.cc-thinking i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.cc-thinking i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.cc-bubble {
+  position: relative;
+  max-width: 230px;
+  padding: 8px 11px;
+  border: 1px solid #18181b14;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px #18181b0d, 0 8px 24px #18181b1a;
+  color: #18181b;
+  font-size: 11.5px;
+  line-height: 1.4;
+  white-space: normal;
+  animation: cc-rise 0.25s ease-out;
+}
+.cc-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid #18181b14;
+  border-bottom: 1px solid #18181b14;
+  background: #ffffff;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+@keyframes cc-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes cc-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+@keyframes cc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-dot.cc-alert,
+  .cc-thinking i,
+  .cc-bubble {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .cc-chip {
+    font-size: 11px;
+    padding: 4px 9px 4px 7px;
+  }
+  .cc-bubble {
+    max-width: 170px;
+    font-size: 10.5px;
+  }
+}
