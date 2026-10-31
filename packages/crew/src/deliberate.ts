@@ -51,6 +51,8 @@ export async function deliberate(
   onTurn: (turn: CrewTurn) => void = () => {},
   /** Radio traffic from earlier in the run, such as June's field photo, heard by the planner. */
   earlier: TeamMessage[] = [],
+  /** For evaluation: roles kept off the radio, so their reports never reach the planner. */
+  options: { silence?: Role[] } = {},
 ): Promise<Deliberation> {
   let n = 0;
   const turns: CrewTurn[] = [];
@@ -63,7 +65,7 @@ export async function deliberate(
 
   // 1. Each role reports from its own briefing only, in parallel.
   // Turns are streamed as each report lands, then kept in role order for the planner.
-  const reports = await Promise.all(roles.map(async role => {
+  const reports = await Promise.all(roles.filter(role => !options.silence?.includes(role)).map(async role => {
     const r = await provider.report({ kind: 'report', role, order, briefing: briefing(scenario, state, role) });
     return { role, r, t: turn({ from: role, kind: 'report', text: r.output.message, cites: r.output.cites, ms: r.ms, usage: r.usage, prompt: r.prompt }) };
   }));

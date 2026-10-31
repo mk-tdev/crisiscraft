@@ -19,7 +19,8 @@
     "check": "npm run test && npm run build",
     "build:vercel": "npm run build && node scripts/build-vercel.mjs",
     "assets:fetch": "python3 scripts/fetch-assets.py",
-    "meta:check": "node --env-file-if-exists=.env scripts/meta-check.mjs"
+    "meta:check": "node --env-file-if-exists=.env scripts/meta-check.mjs",
+    "eval:crew": "esbuild scripts/eval-crew.ts --bundle --platform=node --format=esm --target=node22 --outfile=.data/eval-crew.mjs --log-level=warning && node --env-file-if-exists=.env .data/eval-crew.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

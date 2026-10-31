@@ -54,6 +54,18 @@ Every turn on the radio is a separate call to the **Meta Model API** (`muse-spar
 - **A verifiable after-action review.** At the end of a drill, or in decision replay, **Muse Spark** reads both runs' engine logs and what each crew member knew at each order, then writes the debrief. Every finding must cite event ids; the server checks each one against the replayed runs and removes any finding that cites an event that never happened, and the review says how many it removed.
 - **A guardrail loop** dry-runs that plan in the deterministic engine. If the plan is refused, the reason goes back to the model for one revision. Two refusals mean nothing happens, and the crew says so.
 
+### Does bounded knowledge actually matter? We measured it
+
+Thirty live Muse Spark drills from the same moment (minute 2: bridge still open, June has seen the water rising, the bridge closes at minute 4):
+
+| Condition | Took the hill road | School supplied on time | Plan cites June's warning |
+| --- | --- | --- | --- |
+| Full radio, "get six crates to the school" | **10 of 10** | **10 of 10** | 10 of 10 |
+| Same order, **June kept off the radio** | 0 of 10 | **0 of 10** | 0 of 10 |
+| Full radio, "bridge is fastest, go that way" | 0 of 10 (followed the order) | 0 of 10 | **10 of 10 warned you** |
+
+The planner never sees the true road state. When the one person who saw the water is silenced, every plan sends the truck into the closure. When the commander insists on the bridge, the crew complies and says the warning out loud. Every plan passed the rules check on the first try. Details and raw runs: [docs/eval/crew-eval.md](docs/eval/crew-eval.md); reproduce with `npm run eval:crew`.
+
 Turns stream to the browser as they arrive. Each turn shows its latency, token count and the exact briefing the model received. Muse Spark Open on Baseten works through the same OpenAI-compatible interface by changing `MODEL_BASE_URL` and `MODEL_NAME`.
 
 **Without a key**, the app runs a deterministic **Scripted crew**. It reads the same bounded briefings and follows the same rules, and the header clearly labels it *Scripted crew · no model key*. It exists so anyone can explore the drill offline. It is not presented as AI.
