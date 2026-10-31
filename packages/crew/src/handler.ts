@@ -4,6 +4,7 @@ import { harborPoint, replay } from '@crisiscraft/sim';
 import { deliberate, type CrewTurn } from './deliberate';
 import { chooseProvider } from './providers';
 import { voiceAvailable } from './voice';
+import { rateLimit, visitor } from './limit';
 
 const requestSchema = z.object({
   minute: z.number().int().min(0).max(harborPoint.horizon),
@@ -55,7 +56,11 @@ export function streamCrew(input: unknown, env: Env): ReadableStream<Uint8Array>
   });
 }
 
-interface NodeRequest extends AsyncIterable<Uint8Array | string> { method?: string }
+interface NodeRequest extends AsyncIterable<Uint8Array | string> {
+  method?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
+}
 interface NodeResponse {
   statusCode: number;
   setHeader(name: string, value: string): void;
@@ -65,6 +70,8 @@ interface NodeResponse {
 
 /** Node (req, res) adapter shared by the Vite dev server and the Vercel Function. */
 export function nodeCrewHandler(env: Env) {
+  // About four model calls per order; 40 orders per visitor per 10 minutes is far above a real drill.
+  const limiter = rateLimit(Number(env.CREW_RATE_LIMIT) || 40, 10 * 60_000);
   return async (req: NodeRequest, res: NodeResponse) => {
     const json = (status: number, body: unknown) => {
       res.statusCode = status;
@@ -73,6 +80,7 @@ export function nodeCrewHandler(env: Env) {
     };
     if (req.method === 'GET') return json(200, crewStatus(env));
     if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
+    if (!limiter.allow(visitor(req))) return json(429, { error: 'The crew needs a breather. Try again in a few minutes.' });
     let raw = '';
     for await (const chunk of req) {
       raw += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);

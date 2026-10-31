@@ -3,6 +3,8 @@
  * mono 16-bit WAV; the server forwards it to Meta's file endpoint so the key never leaves it.
  */
 
+import { rateLimit, visitor } from './limit';
+
 type Env = Record<string, string | undefined>;
 
 /** Names and places the radio hears often; biases recognition without forcing spellings. */
@@ -45,7 +47,11 @@ export async function transcribe(wav: Uint8Array, env: Env): Promise<Transcript>
   return { transcript: body.transcript.trim(), model, ms: Date.now() - started, audioMs: typeof body.audioDurationMs === 'number' ? body.audioDurationMs : null };
 }
 
-interface NodeRequest extends AsyncIterable<Uint8Array | string> { method?: string }
+interface NodeRequest extends AsyncIterable<Uint8Array | string> {
+  method?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
+}
 interface NodeResponse {
   statusCode: number;
   setHeader(name: string, value: string): void;
@@ -54,6 +60,7 @@ interface NodeResponse {
 
 /** POST a WAV body, get {transcript}. Shared by the Vite dev server and the Vercel Function. */
 export function nodeVoiceHandler(env: Env) {
+  const limiter = rateLimit(Number(env.CREW_RATE_LIMIT) || 40, 10 * 60_000);
   return async (req: NodeRequest, res: NodeResponse) => {
     const json = (status: number, body: unknown) => {
       res.statusCode = status;
@@ -63,6 +70,7 @@ export function nodeVoiceHandler(env: Env) {
     };
     if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
     if (!voiceAvailable(env)) return json(503, { error: 'Voice orders need MODEL_API_KEY.' });
+    if (!limiter.allow(visitor(req))) return json(429, { error: 'Too many recordings. Try again in a few minutes.' });
     const chunks: Uint8Array[] = [];
     let size = 0;
     for await (const chunk of req) {

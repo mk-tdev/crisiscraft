@@ -57,3 +57,15 @@ describe('spoken orders', () => {
     expect(crewStatus({ ...env, CREW_PROVIDER: 'scripted' }).voice).toBe(false);
   });
 });
+
+describe('public demo rate limit', () => {
+  it('lets a visitor through up to the limit per window, then refuses until it slides', async () => {
+    const { rateLimit } = await import('../../packages/crew/src/limit');
+    const limiter = rateLimit(2, 1000);
+    expect(limiter.allow('a', 0)).toBe(true);
+    expect(limiter.allow('a', 10)).toBe(true);
+    expect(limiter.allow('a', 20)).toBe(false);
+    expect(limiter.allow('b', 20)).toBe(true);
+    expect(limiter.allow('a', 1001)).toBe(true);
+  });
+});
