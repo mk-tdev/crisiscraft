@@ -48,6 +48,7 @@ Every turn on the radio is a separate call to the **Meta Model API** (`muse-spar
 
 - **Three role reports run in parallel.** Each report sees only its own briefing, projected by the engine from the world state. The future schedule, other roles' private reports and the true road status are never in the prompt.
 - **A planning turn** sees Priya's briefing plus what her teammates said on the radio. It must return a structured plan: truck, request, quantity and route.
+- **June's field photo uses three Meta models in one radio turn.** Press **Bridge photo**: **Muse Image** (`muse-image-1.0`) renders what June sees at the north bridge right now, with the water level taken from the engine's true state; **SAM 3.1** outlines the bridge and the floodwater, and we measure how much of the bridge is under water from the masks; **Muse Spark** reads the photo with that measurement and makes the call (*passable, risky, not passable*). Her reading goes onto the radio Priya hears when she plans next.
 - **Spoken orders** go through **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`). Click the mic, speak, click again: the browser records a 24 kHz WAV, the server forwards it to `/v1/asr/transcribe` in push-to-talk mode, with the crew's names and the town's roads as vocabulary hints, and the transcript becomes your order.
 - **A guardrail loop** dry-runs that plan in the deterministic engine. If the plan is refused, the reason goes back to the model for one revision. Two refusals mean nothing happens, and the crew says so.
 

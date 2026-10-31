@@ -4,5 +4,10 @@
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "dependencies": { "@crisiscraft/contracts": "*", "@crisiscraft/sim": "*", "zod": "^4.0.0" }
+  "dependencies": {
+    "@crisiscraft/contracts": "*",
+    "@crisiscraft/sim": "*",
+    "@meta-sam/parser": "^0.1.0",
+    "zod": "^4.0.0"
+  }
 }

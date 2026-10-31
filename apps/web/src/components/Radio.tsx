@@ -3,6 +3,7 @@ import type { Role, WorldState } from "@crisiscraft/contracts";
 import { crew, roles, type CrewTurn, type Deliberation } from "@crisiscraft/crew";
 import { Icon } from "../icons";
 import { mm, roleColor, who } from "../format";
+import { PhotoTurn, type PhotoState } from "./Photo";
 
 export interface CrewState {
   order: string;
@@ -69,12 +70,20 @@ function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {
 }
 
 /** Bottom-left radio: three crew channels with live status, and the scrolling log of the last exchange. */
-export function Radio({ world, state, open, onToggle }: { world: WorldState; state: CrewState | null; open: boolean; onToggle: () => void }) {
+export function Radio({ world, state, photo, onPhoto, open, onToggle }: {
+  world: WorldState;
+  state: CrewState | null;
+  photo: PhotoState | null;
+  /** Present when a live key can run June's photo pipeline. */
+  onPhoto?: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const log = useRef<HTMLOListElement>(null);
   const said = new Set(state?.turns.map((t) => t.from));
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight, behavior: "smooth" });
-  }, [state?.turns.length, state?.loading]);
+  }, [state?.turns.length, state?.loading, photo?.image, photo?.segments, photo?.read]);
   const status = (r: Role) => (state?.loading && !said.has(r) ? "thinking" : said.has(r) ? "spoke" : "idle");
 
   return (
@@ -89,17 +98,23 @@ export function Radio({ world, state, open, onToggle }: { world: WorldState; sta
             </span>
           ))}
         </div>
+        {onPhoto && (
+          <button className="photo-btn" onClick={onPhoto} disabled={photo?.loading} title="June photographs the north bridge: Muse Image, SAM 3.1 and Muse Spark">
+            <Icon name="camera" size={15} /> {photo?.loading ? "Taking…" : "Bridge photo"}
+          </button>
+        )}
         <button className="ghost icon" onClick={onToggle} aria-expanded={open} aria-label={open ? "Collapse radio" : "Expand radio"}>
           <Icon name="chevron" size={14} />
         </button>
       </header>
       {open && (
         <ol className="radio-log" ref={log} aria-live="polite">
-          {!state && (
+          {!state && !photo && (
             <li className="radio-empty">
               Channel quiet. Give an order below — each crew member answers from what only they know.
             </li>
           )}
+          {photo && <PhotoTurn photo={photo} currentMinute={world.tick} />}
           {state?.turns.map((t) => <Turn key={t.id} turn={t} world={world} />)}
           {state?.loading && (
             <li className="turn thinking">

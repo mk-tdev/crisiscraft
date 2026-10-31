@@ -41,3 +41,8 @@ Do not reuse source or assets from Village of Shadows, BatchLens, Open Disaster 
 ## Before public submission
 
 Select a repository source license deliberately, retain dependency notices, and update this inventory for any added fonts, models, images, audio or datasets. The organizer's public-repository requirement does not by itself choose a source license for the team.
+
+## Meta model outputs and libraries
+
+- `@meta-sam/parser` (npm, Meta, SAM License) decodes SAM 3.1 segmentation output on the server. It is used unmodified as a dependency.
+- Field photos are generated live by Muse Image for each request and are not stored or redistributed by this project. The bridge in them is fictional.

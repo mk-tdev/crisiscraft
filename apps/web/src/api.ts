@@ -1,5 +1,5 @@
 import type { ApprovedCommand } from "@crisiscraft/contracts";
-import type { CrewTurn, Deliberation } from "@crisiscraft/crew";
+import type { CrewTurn, Deliberation, PhotoEvent } from "@crisiscraft/crew";
 
 export interface ProviderInfo {
   id: "meta" | "scripted";
@@ -27,7 +27,7 @@ export async function crewStatus(): Promise<CrewStatus | null> {
 
 /** Streams each crew turn as it arrives, then resolves with the full deliberation. */
 export async function askCrew(
-  body: { minute: number; order: string; commands: { tick: number; command: ApprovedCommand }[] },
+  body: { minute: number; order: string; commands: { tick: number; command: ApprovedCommand }[]; photo?: { minute: number; text: string } },
   onTurn: (turn: CrewTurn) => void,
   signal?: AbortSignal,
 ): Promise<Deliberation> {
@@ -54,4 +54,38 @@ export async function askCrew(
     }
   }
   throw new Error("The crew stopped responding before finishing.");
+}
+
+/** Streams June's field photo: the image, then SAM 3.1's outlines, then her reading. */
+export async function askPhoto(
+  body: { minute: number; commands: { tick: number; command: ApprovedCommand }[] },
+  onEvent: (event: PhotoEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch("/api/photo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.body || !response.headers.get("content-type")?.includes("ndjson")) {
+    const detail = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(detail?.error ?? `The photo service is unavailable (${response.status}).`);
+  }
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+    buffer += chunk.value;
+    let newline: number;
+    while ((newline = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      if (!line) continue;
+      const message = JSON.parse(line) as { event?: PhotoEvent; done?: boolean; error?: string };
+      if (message.event) onEvent(message.event);
+      if (message.error) throw new Error(message.error);
+      if (message.done) return;
+    }
+  }
+  throw new Error("The photo stopped before June could read it.");
 }

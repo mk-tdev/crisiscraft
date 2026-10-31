@@ -8,6 +8,7 @@ import { useDrill } from "./drill";
 import { describe, mm, requestNames, routeName, trucks } from "./format";
 import { Icon, type IconName } from "./icons";
 import { Radio, type CrewState } from "./components/Radio";
+import { usePhoto } from "./components/Photo";
 import { Dispatch } from "./components/Dispatch";
 import { CrewPanel } from "./components/Crew";
 import { LogPanel } from "./components/Log";
@@ -27,13 +28,13 @@ const BRIEFED = "crisiscraft:briefed";
 function useCrew(minute: number, revision: number) {
   const [state, setState] = useState<CrewState | null>(null);
   const abort = useRef<AbortController | null>(null);
-  const ask = useCallback(async (order: string, commands: Parameters<typeof askCrew>[0]["commands"]) => {
+  const ask = useCallback(async (order: string, commands: Parameters<typeof askCrew>[0]["commands"], photo?: Parameters<typeof askCrew>[0]["photo"]) => {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
     setState({ order, turns: [], result: null, error: null, loading: true });
     try {
-      const result = await askCrew({ minute, order, commands }, (turn: CrewTurn) =>
+      const result = await askCrew({ minute, order, commands, photo }, (turn: CrewTurn) =>
         setState((s) => (s ? { ...s, turns: [...s.turns, turn] } : s)), controller.signal);
       setState((s) => (s ? { ...s, turns: result.turns, result, loading: false } : s));
     } catch (error) {
@@ -57,6 +58,15 @@ export function App() {
   const drill = useDrill();
   const { world, timeline, timelines, active } = drill;
   const crewChat = useCrew(world.tick, world.revision);
+  const field = usePhoto(world.tick);
+  const history = timeline.decisions.map(({ tick, command }) => ({ tick, command }));
+  // A photo belongs to one run: drop it when the timeline changes or a rewind goes back before it.
+  const photoMinute = field.photo?.minute;
+  const clearPhoto = field.clear;
+  useEffect(() => {
+    if (photoMinute !== undefined && photoMinute > world.tick) clearPhoto();
+  }, [photoMinute, world.tick, clearPhoto]);
+  useEffect(() => clearPhoto(), [active, timeline.decisions.length, clearPhoto]);
   const [provider, setProvider] = useState<ProviderInfo | null | undefined>(undefined);
   const [voice, setVoice] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(null);
@@ -217,7 +227,14 @@ export function App() {
         <button className={labels ? "on-soft" : ""} onClick={() => setLabels(!labels)} aria-pressed={labels} title="Labels"><Icon name="eye" size={17} /><span>Labels</span></button>
       </nav>
 
-      <Radio world={world} state={crewChat.state} open={radioOpen} onToggle={() => setRadioOpen(!radioOpen)} />
+      <Radio
+        world={world}
+        state={crewChat.state}
+        photo={field.photo}
+        onPhoto={voice && !drill.ended ? () => { drill.setPlaying(false); setRadioOpen(true); void field.take(history); } : undefined}
+        open={radioOpen}
+        onToggle={() => setRadioOpen(!radioOpen)}
+      />
 
       <div className="dispatch-dock">
         <Dispatch
@@ -226,7 +243,12 @@ export function App() {
           ended={drill.ended}
           stale={crewChat.stale}
           voice={voice}
-          onAsk={(order) => { drill.setPlaying(false); setRadioOpen(true); void crewChat.ask(order, timeline.decisions.map(({ tick, command }) => ({ tick, command }))); }}
+          onAsk={(order) => {
+            drill.setPlaying(false);
+            setRadioOpen(true);
+            const read = field.photo?.read;
+            void crewChat.ask(order, history, read ? { minute: field.photo!.minute, text: read.message } : undefined);
+          }}
           onApprove={approve}
           onDismiss={crewChat.clear}
           onReplay={branchReady ? () => setComparing(true) : null}

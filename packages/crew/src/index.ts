@@ -5,3 +5,4 @@ export * from './providers';
 export * from './deliberate';
 export * from './handler';
 export * from './voice';
+export * from './photo';

@@ -48,6 +48,8 @@ export function check(scenario: Scenario, state: WorldState, command: ApprovedCo
 export async function deliberate(
   scenario: Scenario, state: WorldState, order: string, provider: CrewProvider,
   onTurn: (turn: CrewTurn) => void = () => {},
+  /** Radio traffic from earlier in the run, such as June's field photo, heard by the planner. */
+  earlier: TeamMessage[] = [],
 ): Promise<Deliberation> {
   let n = 0;
   const turns: CrewTurn[] = [];
@@ -64,7 +66,7 @@ export async function deliberate(
     const r = await provider.report({ kind: 'report', role, order, briefing: briefing(scenario, state, role) });
     return { role, r, t: turn({ from: role, kind: 'report', text: r.output.message, cites: r.output.cites, ms: r.ms, usage: r.usage, prompt: r.prompt }) };
   }));
-  const team: TeamMessage[] = reports.map(({ role, r }) => ({ from: role, text: r.output.message, cites: r.output.cites }));
+  const team: TeamMessage[] = [...earlier, ...reports.map(({ role, r }) => ({ from: role, text: r.output.message, cites: r.output.cites }))];
   turns.push(...reports.map(r => r.t));
 
   // 2. Logistics plans from its briefing plus what teammates said; 3. the engine checks it; one revision.
