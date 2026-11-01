@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { scenarios } from "@crisiscraft/sim";
 import { Icon, type IconName } from "../icons";
 
 const concepts: { icon: IconName; title: string; tag: string; body: string; look: string }[] = [
@@ -25,7 +26,26 @@ const concepts: { icon: IconName; title: string; tag: string; body: string; look
 ];
 
 /** Mission briefing on first visit; the same sheet explains the four ideas behind the drill. */
-export function Briefing({ open, onClose }: { open: boolean; onClose: () => void }) {
+const pitch: Record<string, { title: string; body: string; meta: string }> = {
+  "harbor-point": {
+    title: "Harbor Point is flooding.",
+    body: "The school shelter needs six crates by minute 9 and has no power to unload. The north bridge is the fastest road there — for now. Keep one truck at the depot in case another shelter calls.",
+    meta: "Tutorial · 15 minutes · 1 bridge · 2 trucks",
+  },
+  "harbor-point-region": {
+    title: "The whole region is in trouble.",
+    body: "A care home on the low ground, 140 people at the hill school, a village across the bay and a field hospital all need crates — 34 needed, 34 in the port depot. The harbour bridge is failing, the tide will drown the causeway for twelve minutes, and someone has reported a landslide. Trucks come back to reload, but not fast enough to do everything at once.",
+    meta: "Regional · 50 minutes · 4 places · 4 trucks · bridge, tide and a rumour",
+  },
+};
+
+export function Briefing({ open, onClose, scenarioId, onScenario }: {
+  open: boolean;
+  onClose: () => void;
+  scenarioId: string;
+  /** Switch drills; starts a fresh run of the chosen scenario. */
+  onScenario: (id: string) => void;
+}) {
   useEffect(() => {
     const close = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -37,11 +57,16 @@ export function Briefing({ open, onClose }: { open: boolean; onClose: () => void
       <div className="briefing" role="dialog" aria-modal="true" aria-label="Mission briefing" onClick={(e) => e.stopPropagation()}>
         <div className="briefing-head">
           <span className="eyebrow accent">Mission briefing · fictional drill</span>
-          <h2>Harbor Point is flooding.</h2>
-          <p>
-            The school shelter needs <b>six crates by minute 9</b> and has no power to unload. The north bridge is the fastest road there —
-            for now. Keep <b>one truck at the depot</b> in case another shelter calls.
-          </p>
+          <h2>{pitch[scenarioId]?.title ?? "Harbor Point is flooding."}</h2>
+          <p>{pitch[scenarioId]?.body}</p>
+        </div>
+        <div className="scenario-pick" role="radiogroup" aria-label="Choose a drill">
+          {scenarios.map((s) => (
+            <button key={s.id} role="radio" aria-checked={s.id === scenarioId} className={s.id === scenarioId ? "on" : ""} onClick={() => onScenario(s.id)}>
+              <strong>{s.name}</strong>
+              <small>{pitch[s.id]?.meta ?? s.summary}</small>
+            </button>
+          ))}
         </div>
         <ol className="concept-list">
           {concepts.map((c, i) => (

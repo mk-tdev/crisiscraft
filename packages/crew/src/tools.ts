@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { Scenario, WorldState } from '@crisiscraft/contracts';
 import { edgeBetween } from '@crisiscraft/sim';
 import { check, toCommand } from './deliberate';
-import { roadNames, truckNames } from './roster';
+import { roadName, truckName } from './roster';
 import { planSchema, type Plan } from './schemas';
 
 /**
@@ -58,7 +58,7 @@ const place = (scenario: Scenario, id: string) => scenario.nodes.find(n => n.id 
 export function routeRoads(scenario: Scenario, route: string[]) {
   return route.slice(1).map((node, i) => {
     const edge = edgeBetween(scenario, route[i]!, node);
-    return edge ? roadNames[edge.id] ?? edge.id : `${route[i]}–${node}`;
+    return edge ? roadName(scenario, edge.id) : `${route[i]}–${node}`;
   });
 }
 
@@ -109,7 +109,7 @@ export function planTools(scenario: Scenario, state: WorldState): PlanTools {
         const plan: Plan = { message: '-', rationale: '-', hold: false, actions: args.data.actions, cites: [] };
         const problem = args.data.actions.length ? check(scenario, state, toCommand(state, plan, 'dry-run')) : 'No actions to check.';
         const what = args.data.actions
-          .map(a => `${truckNames[a.vehicleId] ?? a.vehicleId} · ${a.quantity} crates · ${routeRoads(scenario, a.route).join(' → ')}`)
+          .map(a => `${truckName(scenario, a.vehicleId)} · ${a.quantity} crates · ${routeRoads(scenario, a.route).join(' → ')}`)
           .join('; ');
         const result = problem ? { ok: false, reason: problem } : { ok: true };
         return { result, call: { name: 'check_plan', args: args.data, result, summary: `Dry run: ${what} — ${problem ? `refused: ${problem.replace(/\.$/, '')}` : 'passes'}.` } };

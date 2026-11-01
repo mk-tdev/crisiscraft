@@ -31,8 +31,12 @@ export const crew: Record<Role, CrewMember> = {
 
 export const roles: Role[] = ['logistics', 'shelter', 'field'];
 
-/** Radio names for the things the engine identifies by id. */
+/** Tutorial radio names; a scenario's own labels take precedence (see truckName/roadName). */
 export const truckNames: Record<string, string> = { V1: 'Rescue 01', V2: 'Rescue 02' };
 export const roadNames: Record<string, string> = {
   DJ: 'Harbour Road', JS: 'north bridge', DH: 'Mill Lane', HS: 'hill road', JH: 'ridge link', DE: 'coast road',
 };
+
+type Named = { edges: { id: string; label?: string }[]; vehicles: { id: string; label?: string }[] };
+export const truckName = (scenario: Named, id: string) => scenario.vehicles.find(v => v.id === id)?.label ?? truckNames[id] ?? id;
+export const roadName = (scenario: Named, id: string) => scenario.edges.find(e => e.id === id)?.label ?? roadNames[id] ?? id;

@@ -1,13 +1,34 @@
-import type { Role, SimEvent, WorldState } from "@crisiscraft/contracts";
+import type { Role, Scenario, SimEvent, WorldState } from "@crisiscraft/contracts";
 import { crew } from "@crisiscraft/crew";
 import { harborPoint, metrics } from "@crisiscraft/sim";
 
-export const places: Record<string, string> = Object.fromEntries(harborPoint.nodes.map((n) => [n.id, n.label]));
-export const roads: Record<string, string> = {
+/**
+ * The drill being played. One scenario is active at a time; choosing another starts a fresh
+ * drill, and these name tables are refilled from it so every label reads the same way.
+ */
+let current: Scenario = harborPoint;
+export const scenario = () => current;
+
+const tutorialRoads: Record<string, string> = {
   DJ: "Harbour Road", JS: "North bridge", DH: "Mill Lane", HS: "Hill road", JH: "Ridge link", DE: "Coast road",
 };
-export const trucks: Record<string, string> = { V1: "Rescue 01", V2: "Rescue 02" };
-export const requestNames: Record<string, string> = { school: "School shelter", east: "East shelter" };
+export const places: Record<string, string> = {};
+export const roads: Record<string, string> = {};
+export const trucks: Record<string, string> = {};
+export const requestNames: Record<string, string> = {};
+
+const refill = (table: Record<string, string>, entries: [string, string][]) => {
+  for (const key of Object.keys(table)) delete table[key];
+  Object.assign(table, Object.fromEntries(entries));
+};
+export function setScenario(next: Scenario) {
+  current = next;
+  refill(places, next.nodes.map((n) => [n.id, n.label]));
+  refill(roads, next.edges.map((e) => [e.id, e.label ? e.label[0]!.toUpperCase() + e.label.slice(1) : tutorialRoads[e.id] ?? e.id]));
+  refill(trucks, next.vehicles.map((v, i) => [v.id, v.label ?? `Rescue ${String(i + 1).padStart(2, "0")}`]));
+  refill(requestNames, next.requests.map((r) => [r.id, next.nodes.find((n) => n.id === r.destination)?.label ?? r.id]));
+}
+setScenario(harborPoint);
 
 export const roleColor: Record<Role, string> = { logistics: "var(--sky)", shelter: "var(--plum)", field: "var(--sage)" };
 export const who = (from: Role | "commander" | "guardrail") =>
@@ -21,13 +42,13 @@ export const mm = (tick: number) => String(tick).padStart(2, "0");
 export function routeName(route: string[]) {
   const legs: string[] = [];
   for (let i = 1; i < route.length; i++) {
-    const edge = harborPoint.edges.find((e) => (e.from === route[i - 1] && e.to === route[i]) || (e.to === route[i - 1] && e.from === route[i]));
+    const edge = current.edges.find((e) => (e.from === route[i - 1] && e.to === route[i]) || (e.to === route[i - 1] && e.from === route[i]));
     if (edge) legs.push(roads[edge.id] ?? edge.id);
   }
   return legs.join(" → ");
 }
 export const routeMinutes = (route: string[]) => route.slice(1).reduce((sum, id, i) => {
-  const edge = harborPoint.edges.find((e) => (e.from === route[i] && e.to === id) || (e.to === route[i] && e.from === id));
+  const edge = current.edges.find((e) => (e.from === route[i] && e.to === id) || (e.to === route[i] && e.from === id));
   return sum + (edge?.minutes ?? 0);
 }, 0);
 
@@ -70,15 +91,21 @@ export function storyBeats(world: WorldState) {
 }
 
 export function outcome(world: WorldState) {
-  const m = metrics(harborPoint, world);
+  const m = metrics(current, world);
   const school = world.requests.school;
   return {
     ...m,
     schoolMinute: school?.completedTick ?? null,
     schoolOnTime: school?.completedTick != null && school.completedTick <= school.dueTick,
     schoolByDeadline: school && world.tick >= school.dueTick ? school.delivered : null,
+    /** Every place that asked: supplied on time, so far. */
+    placesOnTime: Object.values(world.requests).filter((r) => r.completedTick != null && r.completedTick <= r.dueTick).length,
+    placesAsked: current.requests.length,
   };
 }
+
+/** True for the short tutorial, whose replay and chips centre on the school. */
+export const isTutorial = () => current.id === harborPoint.id;
 
 /** One sentence naming the event that made the two timelines differ. */
 export function headline(a: WorldState, b: WorldState) {
@@ -94,5 +121,9 @@ export function headline(a: WorldState, b: WorldState) {
     return ` In ${label}, ${road} closed at minute ${closure?.tick ?? r.tick} before ${trucks[String(r.data.vehicleId)]} could cross, forcing a diversion.`;
   };
   const cause = ra && !rb ? why(a, ra, "A") : rb && !ra ? why(b, rb, "B") : "";
+  if (!isTutorial()) {
+    const late = (w: WorldState) => Object.values(w.requests).filter((r) => r.completedTick == null || r.completedTick > r.dueTick).map((r) => requestNames[r.id]).join(", ") || "none";
+    return `On time: A ${oa.placesOnTime} of ${oa.placesAsked}, B ${ob.placesOnTime} of ${ob.placesAsked}. Late or unsupplied: A ${late(a)}; B ${late(b)}.${cause}`;
+  }
   return `School shelter: A ${fmt(oa)}; B ${fmt(ob)}.${cause}`;
 }

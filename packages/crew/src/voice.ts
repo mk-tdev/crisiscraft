@@ -12,6 +12,8 @@ export const radioVocabulary = [
   'Priya', 'Malik', 'June', 'Harbor Point', 'Rescue 01', 'Rescue 02',
   'north bridge', 'hill road', 'Mill Lane', 'Harbour Road', 'ridge link', 'coast road',
   'school shelter', 'east shelter', 'depot', 'crates',
+  'Rescue 03', 'Lorry 04', 'care home', 'village hall', 'field hospital', 'causeway', 'harbour bridge',
+  'Port Road', 'Quay Street', 'Station Road', 'West Road', 'Farm Lane', 'Ring Road', 'Market Lane',
 ];
 
 export const MAX_AUDIO_BYTES = 2_000_000;

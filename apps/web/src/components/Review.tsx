@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Debrief } from "@crisiscraft/crew";
-import { harborPoint } from "@crisiscraft/sim";
 import { worldAt, type Timeline } from "../drill";
-import { describe, mm } from "../format";
+import { describe, mm, scenario } from "../format";
 import { Icon } from "../icons";
 
 type Runs = { label: "A" | "B"; timeline: Timeline }[];
@@ -12,6 +11,7 @@ async function askDebrief(runs: Runs, signal: AbortSignal): Promise<Debrief> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      scenarioId: scenario().id,
       timelines: runs.map(({ label, timeline }) => ({
         label,
         decisions: timeline.decisions.map(({ tick, command, order }) => ({ tick, command, order })),
@@ -49,7 +49,7 @@ export function Review({ runs, onClose }: { runs: Runs; onClose: () => void }) {
   }, [onClose]);
 
   // Show citations as the drill's own event lines, from the same deterministic replay.
-  const worlds = Object.fromEntries(runs.map(({ label, timeline }) => [label, worldAt(timeline.decisions, harborPoint.horizon)]));
+  const worlds = Object.fromEntries(runs.map(({ label, timeline }) => [label, worldAt(timeline.decisions, scenario().horizon)]));
   const line = (id: string) => {
     const [label, eventId] = id.split(":");
     const event = worlds[label!]?.events.find((e) => e.id === eventId);

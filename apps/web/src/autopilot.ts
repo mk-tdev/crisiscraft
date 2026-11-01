@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ApprovedCommand } from "@crisiscraft/contracts";
 import type { CrewTurn, Move } from "@crisiscraft/crew";
-import { who } from "./format";
+import { scenario, who } from "./format";
 
 export interface PilotMove extends Move {
   minute: number;
@@ -81,6 +81,7 @@ export function useAutopilot({
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
+          scenarioId: scenario().id,
           minute,
           commands,
           radio: turns

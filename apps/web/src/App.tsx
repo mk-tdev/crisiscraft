@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { crew, roles, type CrewTurn } from "@crisiscraft/crew";
-import { harborPoint, idleAtDepot } from "@crisiscraft/sim";
+import { idleAtDepot } from "@crisiscraft/sim";
 import type { CameraView, CrewMarker, Selection } from "./Town";
 import { LazyTown as Town } from "./LazyTown";
 import { askCrew, crewStatus, type ProviderInfo } from "./api";
 import { useDrill } from "./drill";
-import { describe, mm, requestNames, routeName, trucks } from "./format";
+import { describe, isTutorial, mm, places, requestNames, roads, routeName, scenario, trucks } from "./format";
 import { Icon, type IconName } from "./icons";
 import { Radio, type CrewState } from "./components/Radio";
 import { usePhoto } from "./components/Photo";
@@ -86,7 +86,8 @@ function firstVisit() {
   }
 }
 
-export function App() {
+/** Props from the root: which drill is running and how to switch to another. */
+export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario: (id: string) => void }) {
   const drill = useDrill();
   const { world, timeline, timelines, active } = drill;
   const crewChat = useCrew(world.tick, world.revision);
@@ -118,7 +119,7 @@ export function App() {
     for (const key of [...heard.current])
       if (Number(key.split("|")[2]) > world.tick) heard.current.delete(key);
     if (!initiative || drill.ended || crewChat.state?.loading) return;
-    const since = timeline.branchTick ?? harborPoint.checkpointTick;
+    const since = timeline.branchTick ?? scenario().checkpointTick;
     const news = world.observations
       .filter((o) => o.receivedTick > since && o.receivedTick <= world.tick)
       .flatMap((o) =>
@@ -279,13 +280,25 @@ export function App() {
   const moving = Object.values(world.vehicles).find(
     (v) => v.status === "travelling",
   );
+  const allSupplied = Object.values(world.requests).length === scenario().requests.length
+    && Object.values(world.requests).every((r) => r.completedTick != null);
   const title = drill.ended
     ? "The water has had its say."
-    : school?.completedTick != null
+    : isTutorial() && school?.completedTick != null
       ? "The school has its crates."
-      : moving
-        ? `${trucks[moving.id]} is on the road.`
-        : "Six crates. One school. Nine minutes.";
+      : !isTutorial() && allSupplied
+        ? "Every place has its crates."
+        : moving
+          ? `${trucks[moving.id]} is on the road.`
+          : isTutorial()
+            ? "Six crates. One school. Nine minutes."
+            : "Four places in need. One tide.";
+  // Region chips: every road the storm can close, and the next deadline still open.
+  const hazardRoads = [...new Set(scenario().events.flatMap((e) => ("edgeId" in e ? [e.edgeId] : [])))];
+  const nextDue = Object.values(world.requests)
+    .filter((r) => r.completedTick == null)
+    .sort((a, b) => a.dueTick - b.dueTick)[0];
+  const suppliedCount = Object.values(world.requests).filter((r) => r.completedTick != null && r.completedTick <= r.dueTick).length;
   const latest = [...world.events]
     .reverse()
     .find(
@@ -295,7 +308,7 @@ export function App() {
   const branchReady = !!timelines.B?.decisions.some(
     (d) => !timelines.A.decisions.includes(d),
   );
-  const reserve = idleAtDepot(harborPoint, world);
+  const reserve = idleAtDepot(scenario(), world);
   const schoolState =
     school?.completedTick != null
       ? school.completedTick <= school.dueTick
@@ -489,9 +502,29 @@ export function App() {
         <span className="eyebrow accent">
           {active === "B"
             ? `Timeline B · what if, from minute ${mm(timeline.branchTick ?? 0)}`
-            : "Harbor Point · coastal flood"}
+            : `${scenario().name} · coastal flood`}
         </span>
         <h1>{title}</h1>
+        {!isTutorial() && (
+          <ul className="conditions">
+            {hazardRoads.map((id) => (
+              <li key={id} className={world.roads[id] ? "warn" : "bad"}>
+                <Icon name="bridge" size={14} /> {roads[id]} {world.roads[id] ? "open" : "closed"}
+              </li>
+            ))}
+            <li>
+              <Icon name="layers" size={14} /> {world.stock} crates
+            </li>
+            <li className={nextDue ? (world.tick > nextDue.dueTick ? "bad" : "warn") : "good"}>
+              <Icon name="clock" size={14} />{" "}
+              {nextDue ? `${places[nextDue.destination]} due min ${mm(nextDue.dueTick)}` : `${suppliedCount} of ${scenario().requests.length} on time`}
+            </li>
+            <li className={reserve >= 1 ? "good" : "bad"}>
+              <Icon name="truck" size={14} /> {reserve} in reserve
+            </li>
+          </ul>
+        )}
+        {isTutorial() && (
         <ul className="conditions">
           <li className={world.roads.JS ? "warn" : "bad"}>
             <Icon name="bridge" size={14} /> Bridge{" "}
@@ -514,6 +547,7 @@ export function App() {
             <Icon name="truck" size={14} /> {reserve} in reserve
           </li>
         </ul>
+        )}
       </section>
 
       {latest && (
@@ -651,7 +685,7 @@ export function App() {
         </div>
       </aside>
 
-      <Briefing open={briefing} onClose={closeBriefing} />
+      <Briefing open={briefing} onClose={closeBriefing} scenarioId={scenarioId} onScenario={onScenario} />
       {reviewing === "run" && (
         <Review
           runs={[{ label: active, timeline }]}

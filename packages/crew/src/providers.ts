@@ -79,7 +79,7 @@ export interface CrewProvider {
 export function prompts(task: CrewTask) {
   const me = crew[task.role];
   const system = [
-    `You are ${me.name}, ${me.title} at the ${me.post}, in Harbor Point: a FICTIONAL flood coordination drill.`,
+    `You are ${me.name}, ${me.title} (${task.briefing.you.post}), in ${task.briefing.drill}: a FICTIONAL flood coordination drill.`,
     `Your remit: ${me.remit} Your voice: ${me.voice}`,
     "You know ONLY what is in your briefing JSON. Never invent roads, stock, times or reports.",
     "Every observation carries the minute it was observed; an old observation may be stale, so say how old it is when it matters.",
@@ -372,6 +372,81 @@ const fact = (b: Briefing, id: string) =>
  * Deterministic stand-in used when no model key is configured. It reads the same bounded
  * briefings and is labelled "Scripted crew" in the interface; it is not presented as AI.
  */
+/**
+ * General scripted crew for scenarios other than the tutorial: it reads the same bounded
+ * briefing, reports its newest facts, plans the shortest route on Priya's map that avoids any
+ * road a teammate warned about, and reviews a plan against its own reports.
+ */
+const hazard = /closed|under water|rising|threat|landslide|blocked|cover/i;
+
+function generalReport(task: Extract<CrewTask, { kind: "report" }>): Report {
+  const b = task.briefing;
+  const news = task.news ? b.observations.find((o) => o.id === task.news!.id) : undefined;
+  const newest = news ?? [...b.observations].sort((x, y) => y.observedMinute - x.observedMinute)[0];
+  if (task.role === "logistics") {
+    const depot = b.roadMap?.places.find((p) => p.id === b.roadMap!.depot)?.name;
+    const idle = b.board.trucks.filter((t) => t.status === "idle" && t.at === depot);
+    return { message: `${idle.length} of ${b.board.trucks.length} trucks idle at the ${depot ?? "depot"}. ${b.board.reserveRule}`, cites: b.observations.filter((o) => o.id.startsWith("stock")).map((o) => o.id) };
+  }
+  if (!newest) return { message: "Nothing new from me yet.", cites: [] };
+  const age = b.minute - newest.observedMinute;
+  return { message: `${newest.fact}${age > 0 ? ` (that's ${age} min old)` : ""}`, cites: [newest.id] };
+}
+
+function generalPlan(task: Extract<CrewTask, { kind: "plan" }>): Plan {
+  const b = task.briefing;
+  const map = b.roadMap!;
+  const order = task.order.toLowerCase();
+  const name = (id: string) => map.places.find((p) => p.id === id)?.name ?? id;
+  const hold = (message: string, rationale: string): Plan => ({ message, rationale, hold: true, actions: [], cites: [] });
+  const open = b.board.openRequests.filter((r) => !r.complete && r.quantity > r.delivered && !b.board.trucks.some((t) => t.assignedTo === r.id && t.cargo > 0));
+  const request = open.find((r) => order.includes(r.id) || order.includes(r.destinationName.toLowerCase().split(" ")[0]!)) ?? [...open].sort((x, y) => x.dueMinute - y.dueMinute)[0];
+  const idle = b.board.trucks.filter((t) => t.status === "idle" && t.at === name(map.depot));
+  const reserve = Number(/at least (\d+)/.exec(b.board.reserveRule)?.[1] ?? 1);
+  if (!request) return hold("Nothing is waiting to be delivered right now.", "Every open request is complete or already has a truck.");
+  if (idle.length <= reserve) return hold("Holding: sending another truck now would break the reserve rule.", b.board.reserveRule);
+  // Avoid roads that teammates (or a refusal) said are closed or dangerous, unless the order names them.
+  // A road counts as dangerous only when the same message names it and a hazard.
+  const said = [...task.team.map((m) => m.text), ...(task.reviews ?? []).filter((r) => r.verdict === "concern").map((r) => r.text)].map((t) => t.toLowerCase());
+  const avoid = new Set(map.roads.filter((r) => !order.includes(r.name.toLowerCase()) && said.some((t) => t.includes(r.name.toLowerCase()) && hazard.test(t))).map((r) => r.id));
+  const dist = new Map<string, { minutes: number; path: string[] }>([[map.depot, { minutes: 0, path: [map.depot] }]]);
+  const queue = [map.depot];
+  while (queue.length) {
+    queue.sort((x, y) => dist.get(x)!.minutes - dist.get(y)!.minutes);
+    const here = queue.shift()!;
+    for (const r of map.roads) {
+      if (avoid.has(r.id) || !r.between.includes(here)) continue;
+      const next = r.between[0] === here ? r.between[1]! : r.between[0]!;
+      const minutes = dist.get(here)!.minutes + r.minutes;
+      if (!dist.has(next) || dist.get(next)!.minutes > minutes) { dist.set(next, { minutes, path: [...dist.get(here)!.path, next] }); queue.push(next); }
+    }
+  }
+  const found = dist.get(request.destination);
+  if (!found) return hold(`I have no safe road to the ${request.destinationName} right now.`, `Avoiding: ${[...avoid].map((id) => map.roads.find((r) => r.id === id)?.name).join(", ")}.`);
+  const need = request.quantity - request.delivered;
+  const truck = [...idle].sort((x, y) => (x.capacity >= need ? 0 : 1) - (y.capacity >= need ? 0 : 1) || x.capacity - y.capacity)[0]!;
+  const quantity = Math.min(need, truck.capacity);
+  const roads = found.path.slice(1).map((n, i) => map.roads.find((r) => r.between.includes(found.path[i]!) && r.between.includes(n))?.name ?? n);
+  return {
+    message: `Send ${truck.name} with ${quantity} crates to the ${request.destinationName} via ${roads.join(" → ")}, about ${found.minutes} minutes.`,
+    rationale: avoid.size ? `Shortest road that avoids what the team warned about: ${[...avoid].map((id) => map.roads.find((r) => r.id === id)?.name).join(", ")}.` : `Shortest road on my map; due by minute ${request.dueMinute}.`,
+    hold: false,
+    actions: [{ vehicleId: truck.id, requestId: request.id, quantity, route: found.path }],
+    cites: b.observations.filter((o) => o.id.startsWith("stock")).map((o) => o.id),
+  };
+}
+
+function generalReview(task: Extract<CrewTask, { kind: "review" }>): Review {
+  const p = task.proposal.toLowerCase();
+  const warning = task.briefing.observations.find((o) => {
+    const road = /\(([^)]+)\)$/.exec(o.about)?.[1];
+    return road && p.includes(road.toLowerCase()) && hazard.test(o.fact);
+  });
+  return warning
+    ? { verdict: "concern", message: `That route uses the ${/\(([^)]+)\)$/.exec(warning.about)![1]}. ${warning.fact}`, cites: [warning.id] }
+    : { verdict: "agree", message: "Nothing I know argues against it.", cites: [] };
+}
+
 export const scriptedProvider: CrewProvider = {
   id: "scripted",
   label: "Scripted crew",
@@ -379,6 +454,7 @@ export const scriptedProvider: CrewProvider = {
   live: false,
   async report(task) {
     const b = task.briefing;
+    if (b.drill !== harborPoint.name) return { output: generalReport(task), usage: null, ms: 0, prompt: prompts(task) };
     const lines: Record<Role, () => Report> = {
       logistics: () => {
         const idle = b.board.trucks.filter(
@@ -428,6 +504,14 @@ export const scriptedProvider: CrewProvider = {
   },
   async plan(task) {
     const b = task.briefing;
+    if (b.drill !== harborPoint.name) {
+      const output = generalPlan(task);
+      if (task.tools && output.actions.length) {
+        const { call } = task.tools.call("check_plan", { actions: output.actions });
+        if (call) task.onTool?.(call);
+      }
+      return { output, usage: null, ms: 0, prompt: prompts(task) };
+    }
     const order = task.order.toLowerCase();
     const open = b.board.openRequests.filter(
       (r) =>
@@ -529,6 +613,7 @@ export const scriptedProvider: CrewProvider = {
   },
   async review(task) {
     const b = task.briefing;
+    if (b.drill !== harborPoint.name) return { output: generalReview(task), usage: null, ms: 0, prompt: prompts(task) };
     const p = task.proposal.toLowerCase();
     let output: Review = {
       verdict: "agree",

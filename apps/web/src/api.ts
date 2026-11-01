@@ -1,4 +1,5 @@
 import type { ApprovedCommand } from "@crisiscraft/contracts";
+import { scenario } from "./format";
 import type { CrewTurn, Deliberation, PhotoEvent } from "@crisiscraft/crew";
 
 export interface ProviderInfo {
@@ -45,7 +46,7 @@ export async function askCrew(
   const response = await fetch("/api/crew", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ scenarioId: scenario().id, ...body }),
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(55_000)])
       : AbortSignal.timeout(55_000),
@@ -100,7 +101,7 @@ export async function askPhoto(
   const response = await fetch("/api/photo", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ scenarioId: scenario().id, ...body }),
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(55_000)])
       : AbortSignal.timeout(55_000),

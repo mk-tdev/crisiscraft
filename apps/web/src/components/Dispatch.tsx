@@ -3,6 +3,7 @@ import type { WorldState } from "@crisiscraft/contracts";
 import { Icon } from "../icons";
 import {
   places,
+  isTutorial,
   requestNames,
   routeMinutes,
   routeName,
@@ -18,6 +19,12 @@ function suggestions(world: WorldState) {
   const assigned = (id: string) =>
     Object.values(world.vehicles).some((v) => v.requestId === id);
   const list: string[] = [];
+  if (!isTutorial()) {
+    for (const r of open.filter((r) => !assigned(r.id)).sort((a, b) => a.dueTick - b.dueTick).slice(0, 2))
+      list.push(`Get ${r.quantity - r.delivered} crates to the ${requestNames[r.id]?.toLowerCase()} by minute ${r.dueTick}.`);
+    list.push("Who needs us most right now, and which roads are safe?");
+    return list;
+  }
   if (open.some((r) => r.id === "school" && !assigned("school"))) {
     list.push(
       "Get six crates to the school. Keep one truck back.",

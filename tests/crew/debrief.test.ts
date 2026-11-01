@@ -4,6 +4,7 @@ import { harborPoint } from '@crisiscraft/sim';
 
 const cmd = (route: string[]) => ({ id: 'cmd-1', expectedRevision: 2, reserveMinimum: 1, actions: [{ vehicleId: 'V1', requestId: 'school', quantity: 6, route }] });
 const runs = {
+  scenarioId: 'harbor-point',
   timelines: [
     { label: 'A' as const, decisions: [{ tick: 2, command: cmd(['D', 'H', 'S']), order: 'Hill road to the school.' }] },
     { label: 'B' as const, decisions: [{ tick: 2, command: cmd(['D', 'J', 'S']), order: 'Bridge to the school.' }] },
@@ -17,7 +18,7 @@ describe('after-action review', () => {
     const b = runRecord(harborPoint, 'B', runs.timelines[1]!.decisions).record;
     expect(b.events.every(e => e.id.startsWith('B:'))).toBe(true);
     expect(b.events.some(e => e.what.includes('diverted'))).toBe(true);
-    expect(b.outcome.schoolSuppliedAtMinute).toBe(11);
+    expect(b.outcome.places.find(p => p.place === 'School shelter')!.suppliedAtMinute).toBe(11);
     expect(b.decisions[0]!.dispatched[0]).toContain('Harbour Road → north bridge');
   });
 

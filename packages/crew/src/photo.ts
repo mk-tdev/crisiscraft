@@ -6,7 +6,8 @@ import {
   type Scenario,
   type WorldState,
 } from "@crisiscraft/contracts";
-import { harborPoint, replay } from "@crisiscraft/sim";
+import { replay } from "@crisiscraft/sim";
+import { MAX_MINUTE, scenarioById, scenarioField } from "./scenario";
 import {
   decodeMaskToRaster,
   decodeMaskToSVGPath,
@@ -414,7 +415,8 @@ async function buildFieldPhoto(
 
 const photoRequest = z
   .object({
-    minute: z.number().int().min(0).max(harborPoint.horizon),
+    scenarioId: scenarioField,
+    minute: z.number().int().min(0).max(MAX_MINUTE),
     commands: z
       .array(
         z
@@ -473,7 +475,7 @@ export function nodePhotoHandler(env: Env) {
       return json(400, { error: "Expected {minute, commands}." });
     let state: WorldState;
     try {
-      state = replay(harborPoint, parsed.data.commands, parsed.data.minute);
+      state = replay(scenarioById(parsed.data.scenarioId), parsed.data.commands, parsed.data.minute);
     } catch (error) {
       if (error instanceof SimulationError)
         return json(409, { error: error.message });
@@ -484,7 +486,7 @@ export function nodePhotoHandler(env: Env) {
     res.setHeader("Cache-Control", "no-store");
     const send = (line: unknown) => res.write(`${JSON.stringify(line)}\n`);
     try {
-      await fieldPhoto(harborPoint, state, env, (event) => send({ event }));
+      await fieldPhoto(scenarioById(parsed.data.scenarioId), state, env, (event) => send({ event }));
       send({ done: true });
     } catch (error) {
       send({

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { commandSchema, SimulationError, type Scenario, type SimEvent, type WorldState } from '@crisiscraft/contracts';
-import { harborPoint, metrics, replay, roleContext } from '@crisiscraft/sim';
-import { crew, roles, truckNames } from './roster';
+import { metrics, replay, roleContext } from '@crisiscraft/sim';
+import { scenarioById, scenarioField } from './scenario';
+import { crew, roles, truckName } from './roster';
 import { routeRoads } from './tools';
 import { rateLimit, visitor } from './limit';
 
@@ -15,6 +16,7 @@ type Env = Record<string, string | undefined>;
 
 const decisionSchema = z.object({ tick: z.number().int().min(0), command: commandSchema, order: z.string().trim().min(1).max(400) }).strict();
 const requestSchema = z.object({
+  scenarioId: scenarioField,
   timelines: z.array(z.object({ label: z.enum(['A', 'B']), decisions: z.array(decisionSchema).max(20) }).strict()).min(1).max(2),
 }).strict();
 export type DebriefRequest = z.infer<typeof requestSchema>;
@@ -45,7 +47,7 @@ export interface Debrief {
 export function runRecord(scenario: Scenario, label: 'A' | 'B', decisions: DebriefRequest['timelines'][number]['decisions']) {
   const state: WorldState = replay(scenario, decisions.map(({ tick, command }) => ({ tick, command })), scenario.horizon);
   const m = metrics(scenario, state);
-  const school = state.requests.school;
+  const place = (id: string) => scenario.nodes.find(n => n.id === id)?.label ?? id;
   return {
     label,
     state,
@@ -54,7 +56,7 @@ export function runRecord(scenario: Scenario, label: 'A' | 'B', decisions: Debri
       decisions: decisions.map(d => ({
         minute: d.tick,
         commanderOrder: d.order,
-        dispatched: d.command.actions.map(a => `${truckNames[a.vehicleId] ?? a.vehicleId}, ${a.quantity} crates to ${a.requestId} via ${routeRoads(scenario, a.route).join(' → ')}`),
+        dispatched: d.command.actions.map(a => `${truckName(scenario, a.vehicleId)}, ${a.quantity} crates to ${a.requestId} via ${routeRoads(scenario, a.route).join(' → ')}`),
         // Who knew what when the order was given: the bounded knowledge each crew member had.
         crewKnew: roles.map(role => ({
           who: `${crew[role].name} (${crew[role].title})`,
@@ -66,8 +68,10 @@ export function runRecord(scenario: Scenario, label: 'A' | 'B', decisions: Debri
         .filter(e => e.type !== 'edge-entered' && e.type !== 'edge-arrived')
         .map(e => ({ id: `${label}:${e.id}`, minute: e.tick, what: e.message })),
       outcome: {
-        schoolSuppliedAtMinute: school?.completedTick ?? null,
-        schoolDueMinute: school?.dueTick ?? null,
+        // Every place that asked for crates, so both the tutorial and the region read the same way.
+        places: Object.values(state.requests).map(r => ({
+          place: place(r.destination), crates: r.quantity, delivered: r.delivered, dueMinute: r.dueTick, suppliedAtMinute: r.completedTick,
+        })),
         cratesDelivered: m.deliveredCrates,
         cratesStillNeeded: m.unmetCrates,
         trucksInReserveAtEnd: m.idleTrucksAtDepot,
@@ -104,7 +108,7 @@ export async function debrief(scenario: Scenario, request: DebriefRequest, env: 
         {
           role: 'system',
           content: [
-            'You are the exercise facilitator writing a short after-action review of a FICTIONAL flood drill in Harbor Point.',
+            `You are the exercise facilitator writing a short after-action review of a FICTIONAL flood drill in ${scenario.name}.`,
             runs.length === 2 ? 'Two runs share the same storm and differ by one decision. Explain what made the outcomes differ.' : 'Explain what decided the outcome of this run.',
             'Every finding must cite event ids copied exactly from the logs (for example "A:ev-…"). Cite only events that support the finding.',
             'crewKnew shows what each crew member knew when each order was given; say whether a warning existed and whether the decision used it.',
@@ -161,7 +165,7 @@ export function nodeDebriefHandler(env: Env) {
     const parsed = requestSchema.safeParse((() => { try { return JSON.parse(raw); } catch { return null; } })());
     if (!parsed.success) return json(400, { error: 'Expected {timelines}.' });
     try {
-      return json(200, await debrief(harborPoint, parsed.data, env));
+      return json(200, await debrief(scenarioById(parsed.data.scenarioId), parsed.data, env));
     } catch (error) {
       if (error instanceof SimulationError) return json(409, { error: error.message });
       return json(502, { error: error instanceof Error ? error.message : 'The debrief failed.' });

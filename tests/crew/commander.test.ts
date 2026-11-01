@@ -3,7 +3,7 @@ import { commanderMove, commanderView, scriptedMove } from '@crisiscraft/crew';
 import { harborPoint, replay } from '@crisiscraft/sim';
 
 const at = (minute: number) => replay(harborPoint, [], minute);
-const request = (over: Partial<Parameters<typeof scriptedMove>[1]> = {}) => ({ minute: 2, commands: [], radio: [], pending: null, history: [], ...over });
+const request = (over: Partial<Parameters<typeof scriptedMove>[1]> = {}) => ({ scenarioId: 'harbor-point', minute: 2, commands: [], radio: [], pending: null, history: [], ...over });
 
 afterEach(() => vi.unstubAllGlobals());
 

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { commandSchema, SimulationError, type Scenario, type WorldState } from '@crisiscraft/contracts';
-import { harborPoint, replay } from '@crisiscraft/sim';
-import { truckNames } from './roster';
+import { replay } from '@crisiscraft/sim';
+import { MAX_MINUTE, scenarioById, scenarioField } from './scenario';
+import { truckName } from './roster';
 import { rateLimit, visitor } from './limit';
 
 /**
@@ -21,7 +22,8 @@ const radioLine = z.object({
 }).strict();
 
 const requestSchema = z.object({
-  minute: z.number().int().min(0).max(harborPoint.horizon),
+  scenarioId: scenarioField,
+  minute: z.number().int().min(0).max(MAX_MINUTE),
   commands: z.array(z.object({ tick: z.number().int().min(0), command: commandSchema }).strict()).max(20),
   radio: z.array(radioLine).max(40),
   /** The crew's plan waiting for approval, in plain words, if any. */
@@ -49,7 +51,7 @@ export function commanderView(scenario: Scenario, state: WorldState) {
       crates: r.quantity, delivered: r.delivered, dueMinute: r.dueTick, complete: r.completedTick !== null,
       truckAssigned: Object.values(state.vehicles).some(v => v.requestId === r.id && v.cargo > 0),
     })),
-    trucks: Object.values(state.vehicles).map(v => ({ name: truckNames[v.id] ?? v.id, status: v.status, cargo: v.cargo })),
+    trucks: Object.values(state.vehicles).map(v => ({ name: truckName(scenario, v.id), status: v.status, cargo: v.cargo })),
     depotCrates: state.stock,
     reserveRule: `Keep at least ${state.reserveMinimum} truck idle at the depot.`,
     publicReports: state.observations.filter(o => o.audience.includes('public')).map(o => ({ minute: o.observedTick, fact: o.fact })),
@@ -70,7 +72,7 @@ export async function commanderMove(scenario: Scenario, state: WorldState, reque
         {
           role: 'system',
           content: [
-            'You are the incident commander in Harbor Point, a FICTIONAL flood drill. Your crew: Priya (logistics, plans dispatches), Malik (shelters), June (field, at the north bridge).',
+            'You are the incident commander in Harbor Point, a FICTIONAL flood drill. Your crew: Priya (logistics, plans dispatches), Malik (shelters), June (field lead, watching the roads and water).',
             'You see only the public board, public reports and the crew radio. Choose exactly one move:',
             'order: radio a short plain-words order to the crew (they report, Priya plans, teammates review, a rules check runs);',
             'approve: accept the crew plan that is waiting, if it serves the shelters and you accept its risks;',
@@ -94,7 +96,7 @@ export async function commanderMove(scenario: Scenario, state: WorldState, reque
 }
 
 /** Deterministic autopilot for the scripted crew: order once per open request, approve checked plans. */
-export function scriptedMove(state: WorldState, request: CommanderRequest): Move {
+export function scriptedMove(state: WorldState, request: CommanderRequest, scenario?: Scenario): Move {
   if (request.pending) {
     const concern = request.radio.some(l => l.verdict === 'concern');
     return concern
@@ -102,8 +104,9 @@ export function scriptedMove(state: WorldState, request: CommanderRequest): Move
       : { move: 'approve', order: '', reason: 'The plan passed the rules and the crew agrees.' };
   }
   const open = Object.values(state.requests).find(r => r.completedTick === null && !Object.values(state.vehicles).some(v => v.requestId === r.id && v.cargo > 0));
-  const order = open && `Get ${open.quantity - open.delivered} crates to the ${open.id === 'school' ? 'school' : 'east shelter'}. Keep one truck back.`;
-  if (order && !request.history.some(h => h.includes(order))) return { move: 'order', order, reason: `${open.id === 'school' ? 'The school' : 'The east shelter'} still needs crates and no truck is assigned.` };
+  const where = open && (scenario?.nodes.find(n => n.id === open.destination)?.label ?? (open.id === 'school' ? 'school' : 'east shelter'));
+  const order = open && `Get ${open.quantity - open.delivered} crates to the ${where}. Keep one truck back.`;
+  if (order && !request.history.some(h => h.includes(order))) return { move: 'order', order, reason: `The ${where} still needs crates and no truck is assigned.` };
   return { move: 'wait', order: '', reason: 'Nothing new to decide; let the clock run.' };
 }
 
@@ -139,14 +142,14 @@ export function nodeCommanderHandler(env: Env) {
     if (!parsed.success) return json(400, { error: 'Expected {minute, commands, radio, pending, history}.' });
     let state: WorldState;
     try {
-      state = replay(harborPoint, parsed.data.commands, parsed.data.minute);
+      state = replay(scenarioById(parsed.data.scenarioId), parsed.data.commands, parsed.data.minute);
     } catch (error) {
       if (error instanceof SimulationError) return json(409, { error: error.message });
       throw error;
     }
-    if (!env.MODEL_API_KEY || env.CREW_PROVIDER === 'scripted') return json(200, { ...scriptedMove(state, parsed.data), ms: 0, model: null });
+    if (!env.MODEL_API_KEY || env.CREW_PROVIDER === 'scripted') return json(200, { ...scriptedMove(state, parsed.data, scenarioById(parsed.data.scenarioId)), ms: 0, model: null });
     try {
-      return json(200, await commanderMove(harborPoint, state, parsed.data, env));
+      return json(200, await commanderMove(scenarioById(parsed.data.scenarioId), state, parsed.data, env));
     } catch (error) {
       return json(502, { error: error instanceof Error ? error.message : 'Autopilot failed.' });
     }

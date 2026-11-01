@@ -1,12 +1,13 @@
 import type { WorldState } from "@crisiscraft/contracts";
-import { metrics, harborPoint } from "@crisiscraft/sim";
+import { metrics } from "@crisiscraft/sim";
+import { scenario } from "../format";
 import type { Decision, TimelineId } from "../drill";
 import { describe, mm } from "../format";
 import { Icon } from "../icons";
 
 function download(world: WorldState, decisions: Decision[]) {
   const blob = new Blob([JSON.stringify({
-    scenario: harborPoint, decisions, events: world.events, metrics: metrics(harborPoint, world),
+    scenario: scenario(), decisions, events: world.events, metrics: metrics(scenario(), world),
   }, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement("a"), { href: url, download: `crisiscraft-${world.scenarioId}-minute-${world.tick}.json` });

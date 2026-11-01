@@ -1,7 +1,9 @@
 import { requestBudget, withDeadline } from "./deadline";
 import { z } from "zod";
 import { commandSchema, SimulationError } from "@crisiscraft/contracts";
-import { harborPoint, replay } from "@crisiscraft/sim";
+import { replay } from "@crisiscraft/sim";
+import { MAX_MINUTE, scenarioById, scenarioField } from "./scenario";
+import { roadName } from "./roster";
 import { deliberate, type CrewTurn } from "./deliberate";
 import { chooseProvider } from "./providers";
 import { voiceAvailable } from "./voice";
@@ -9,7 +11,8 @@ import { rateLimit, visitor } from "./limit";
 
 const requestSchema = z
   .object({
-    minute: z.number().int().min(0).max(harborPoint.horizon),
+    scenarioId: scenarioField,
+    minute: z.number().int().min(0).max(MAX_MINUTE),
     order: z.string().trim().min(2).max(400),
     commands: z
       .array(
@@ -69,9 +72,10 @@ export async function handleCrew(
       },
     };
   const { minute, order, commands, photo, initiative } = parsed.data;
+  const scenario = scenarioById(parsed.data.scenarioId);
   let state;
   try {
-    state = replay(harborPoint, commands, minute);
+    state = replay(scenario, commands, minute);
   } catch (error) {
     if (error instanceof SimulationError)
       return { status: 409, body: { error: error.message } };
@@ -83,7 +87,7 @@ export async function handleCrew(
         ? [
             {
               from: "field" as const,
-              text: `Photo from the north bridge at minute ${photo.minute}: ${photo.text}`,
+              text: `Photo from the ${roadName(scenario, "JS")} at minute ${photo.minute}: ${photo.text}`,
               cites: [],
             },
           ]
@@ -93,7 +97,7 @@ export async function handleCrew(
       body: await withDeadline(
         (signal) =>
           deliberate(
-            harborPoint,
+            scenario,
             state,
             order,
             chooseProvider(env, signal),

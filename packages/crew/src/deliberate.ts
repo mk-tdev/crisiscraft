@@ -2,7 +2,7 @@ import { SimulationError, type ApprovedCommand, type Role, type Scenario, type W
 import { approveCommand } from '@crisiscraft/sim';
 import { briefing } from './context';
 import type { CrewProvider, CrewTask, TeamMessage, Usage } from './providers';
-import { crew, roles, truckNames } from './roster';
+import { crew, roles, truckName } from './roster';
 import { planTools, routeMinutes, routeRoads } from './tools';
 import type { Plan } from './schemas';
 
@@ -54,7 +54,7 @@ export function check(scenario: Scenario, state: WorldState, command: ApprovedCo
 function describePlan(scenario: Scenario, state: WorldState, plan: Plan) {
   return plan.actions.map(a => {
     const dest = scenario.nodes.find(n => n.id === state.requests[a.requestId]?.destination)?.label ?? a.requestId;
-    return `${truckNames[a.vehicleId] ?? a.vehicleId} with ${a.quantity} crates to the ${dest} via ${routeRoads(scenario, a.route).join(' → ')}, arriving about minute ${state.tick + routeMinutes(scenario, a.route)} if every road stays open.`;
+    return `${truckName(scenario, a.vehicleId)} with ${a.quantity} crates to the ${dest} via ${routeRoads(scenario, a.route).join(' → ')}, arriving about minute ${state.tick + routeMinutes(scenario, a.route)} if every road stays open.`;
   }).join(' ');
 }
 

@@ -1,11 +1,10 @@
 import type { WorldState } from "@crisiscraft/contracts";
-import { harborPoint } from "@crisiscraft/sim";
 import type { Decision } from "../drill";
-import { describe, mm, requestNames } from "../format";
+import { describe, mm, requestNames, scenario } from "../format";
 
 /** Only the past and publicly known deadlines are marked: the future closure is never revealed. */
 export function MinuteStrip({ world, progress, decisions }: { world: WorldState; progress: number; decisions: Decision[] }) {
-  const h = harborPoint.horizon;
+  const h = scenario().horizon;
   const pct = (t: number) => `${(t / h) * 100}%`;
   const marks = world.events.filter((e) => ["road-closed", "receiving-changed", "request-opened", "delivered"].includes(e.type) && e.tick > 0);
   const deadlines = Object.values(world.requests).filter((r) => r.completedTick === null);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApprovedCommand, SimEvent, WorldState } from "@crisiscraft/contracts";
-import { approveCommand, harborPoint, replay } from "@crisiscraft/sim";
+import { approveCommand, replay } from "@crisiscraft/sim";
+import { scenario } from "./format";
 
 export type TimelineId = "A" | "B";
 export interface Decision {
@@ -17,12 +18,12 @@ export interface Timeline {
   branchTick: number | null;
 }
 
-export const START_MINUTE = harborPoint.checkpointTick;
-const SECONDS_PER_MINUTE = 2.4;
-const fresh = (): Timeline => ({ id: "A", minute: START_MINUTE, decisions: [], branchTick: null });
+/** Real seconds per drill minute: the longer regional drill plays faster so a run still fits a demo. */
+const secondsPerMinute = () => (scenario().horizon > 20 ? 1.2 : 2.4);
+const fresh = (): Timeline => ({ id: "A", minute: scenario().checkpointTick, decisions: [], branchTick: null });
 
 export const worldAt = (decisions: Decision[], minute: number): WorldState =>
-  replay(harborPoint, decisions.map(({ tick, command }) => ({ tick, command })), minute);
+  replay(scenario(), decisions.map(({ tick, command }) => ({ tick, command })), minute);
 
 /** Moments that need the commander: playback pauses so a new decision can be made. */
 const decisionMoment = (events: SimEvent[], tick: number) =>
@@ -36,7 +37,7 @@ export function useDrill() {
   const [progress, setProgress] = useState(0);
   const timeline = (active === "B" ? timelines.B : null) ?? timelines.A;
   const world = useMemo(() => worldAt(timeline.decisions, timeline.minute), [timeline]);
-  const ended = timeline.minute >= harborPoint.horizon;
+  const ended = timeline.minute >= scenario().horizon;
 
   const update = useCallback((id: TimelineId, change: (t: Timeline) => Timeline) => {
     setTimelines((all) => (id === "B" ? (all.B ? { ...all, B: change(all.B) } : all) : { ...all, A: change(all.A) }));
@@ -45,9 +46,9 @@ export function useDrill() {
   const step = useCallback(() => {
     setProgress(0);
     update(active, (t) => {
-      if (t.minute >= harborPoint.horizon) return t;
+      if (t.minute >= scenario().horizon) return t;
       const next = worldAt(t.decisions, t.minute + 1);
-      if (decisionMoment(next.events, t.minute + 1) || t.minute + 1 >= harborPoint.horizon) setPlaying(false);
+      if (decisionMoment(next.events, t.minute + 1) || t.minute + 1 >= scenario().horizon) setPlaying(false);
       return { ...t, minute: t.minute + 1 };
     });
   }, [active, update]);
@@ -61,7 +62,7 @@ export function useDrill() {
     let last = performance.now();
     let local = 0;
     const tick = (now: number) => {
-      local += ((now - last) / 1000) * (speed / SECONDS_PER_MINUTE);
+      local += ((now - last) / 1000) * (speed / secondsPerMinute());
       last = now;
       if (local >= 1) {
         local = 0;
@@ -79,7 +80,7 @@ export function useDrill() {
 
   /** Re-validates locally with the same engine the server used, then records the decision. */
   const approve = useCallback((decision: Omit<Decision, "tick">) => {
-    approveCommand(harborPoint, world, decision.command);
+    approveCommand(scenario(), world, decision.command);
     update(active, (t) => ({ ...t, decisions: [...t.decisions, { ...decision, tick: t.minute }] }));
     setPlaying(true);
   }, [active, update, world]);
@@ -111,7 +112,7 @@ export function useDrill() {
   const runToEnd = useCallback(() => {
     setPlaying(false);
     setProgress(0);
-    update(active, (t) => ({ ...t, minute: harborPoint.horizon }));
+    update(active, (t) => ({ ...t, minute: scenario().horizon }));
   }, [active, update]);
 
   return {
