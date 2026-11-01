@@ -17,7 +17,7 @@ const closeDirection = new Vector3(0.52, 0.56, 0.8).normalize();
  */
 const SAFE = { top: 84, bottom: 190 };
 /** Panning stays over the town; the camera never dips under the ground plane. */
-const BOUNDS = { x: 48, zMin: -34, zMax: 46, minHeight: 0.9 };
+const BOUNDS = { x: 100, zMin: -64, zMax: 82, minHeight: 0.9 };
 
 /** Smoothly flies to a named view, then hands control back to orbit/zoom until the view changes. */
 export function CameraRig({
@@ -43,7 +43,7 @@ export function CameraRig({
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.08;
     orbit.minDistance = 4;
-    orbit.maxDistance = 105;
+    orbit.maxDistance = 150;
     orbit.minPolarAngle = 0.2;
     orbit.maxPolarAngle = 1.36;
     orbit.zoomSpeed = 0.85;

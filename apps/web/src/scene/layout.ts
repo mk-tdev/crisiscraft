@@ -31,15 +31,15 @@ export const crewSpots = {
 export const CORE = { x0: -13.6, x1: 13.6, z0: -10.5, z1: 13.0 };
 /** Shoreline: land ends at z = HARBOUR; everything north of it is sea. */
 export const HARBOUR = -12;
-export const WORLD = 170;
+export const WORLD = 260;
 
 /** Secondary (non-gameplay) streets as axis-aligned rectangles [x0, x1, z0, z1]. */
 export const streets: [number, number, number, number][] = [
-  [-38, -7.7, 3.75, 4.65], // Quay Street, west to the warehouses
+  [-41.2, -7.7, 3.75, 4.65], // Quay Street, west to the warehouses
   [12.2, 38, -3.45, -2.55], // Harbour Street, the shopping street
   [18.55, 19.45, -10.6, 13.15], // Chapel Lane
   [28.55, 29.45, -10.6, 13.15], // Market Lane
-  [-38, 38, 13.15, 14.05], // Ring Road
+  [-41.2, 38, 13.15, 14.05], // Ring Road
   [-24.45, -23.55, -10.6, 13.15], // Dock Road
   [-17.95, -17.05, -10.6, 3.75], // Yard Lane
   [-25.45, -24.55, 14.05, 34], // south grid
@@ -47,7 +47,14 @@ export const streets: [number, number, number, number][] = [
   [-6.25, -5.35, 14.05, 34],
   [-38, 4.5, 21.35, 22.25],
   [-38, 4.5, 29.55, 30.45],
+  // Outskirts: the west road to the port, the station road and the south road along the railway.
+  [-41.2, -39.8, -0.9, 61.5], // West Road
+  [-96, -41.2, -0.9, 0], // Port Road
+  [-6.25, -5.35, 34, 60.6], // Station Road
+  [-100, 100, 60.6, 61.5], // South Road
 ];
+/** The railway runs east–west behind the South Road. */
+export const RAIL_Z = 66;
 export const onStreet = (x: number, z: number, pad = 0) =>
   streets.some(([x0, x1, z0, z1]) => x > x0 - pad && x < x1 + pad && z > z0 - pad && z < z1 + pad);
 

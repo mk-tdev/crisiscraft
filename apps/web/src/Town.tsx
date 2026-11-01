@@ -4,6 +4,7 @@ import { ACESFilmicToneMapping } from "three";
 import type { WorldState } from "@crisiscraft/contracts";
 import { Depot, EastShelter, Neighbourhood, SchoolShelter } from "./scene/buildings";
 import { OuterTown } from "./scene/district";
+import { Outskirts } from "./scene/outskirts";
 import { CameraRig, type CameraView } from "./scene/camera";
 import { Sky, Terrain } from "./scene/environment";
 import { CrewChip, PlaceChip, type Tone } from "./scene/labels";
@@ -117,6 +118,7 @@ function Scene({
       {route.length > 1 && <RouteGlow route={route} roads={state.roads} />}
       <Neighbourhood compact={compact} />
       <OuterTown tick={state.tick + progress} compact={compact} />
+      {!compact && <Outskirts tick={state.tick + progress} />}
       <Depot stock={state.stock} />
       <SchoolShelter powered={schoolPowered} delivered={school?.delivered ?? 0} />
       <EastShelter delivered={east?.delivered ?? 0} />

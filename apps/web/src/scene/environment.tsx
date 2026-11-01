@@ -47,7 +47,7 @@ export function Sky({ shadows }: { shadows: boolean }) {
   );
 }
 
-function LandBlock({
+export function LandBlock({
   x0,
   x1,
   z0,

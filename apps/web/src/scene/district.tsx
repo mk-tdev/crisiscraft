@@ -23,10 +23,10 @@ import { BOAT_DECK, type BoatModel, boatModel, carModels } from "./models";
 
 /* ------------------------------------------------------------------ geography */
 
-const walls = ["#efe6d4", "#e7d6c4", "#d8e1e2", "#e9d9b7", "#dfe6d6", "#f1ddd2", "#d6dde8", "#e8cfc0", "#cfd8cf"];
+export const walls = ["#efe6d4", "#e7d6c4", "#d8e1e2", "#e9d9b7", "#dfe6d6", "#f1ddd2", "#d6dde8", "#e8cfc0", "#cfd8cf"];
 const roofs = ["#b9705f", "#8a96a3", "#6f7c86", "#a45f4f", "#5d6b74", "#c48a6a"];
-const carPaint = ["#e5484d", "#2f6fe4", "#f4f4f5", "#27272a", "#9aa3ab", "#2f9e6b", "#e8a317", "#7c4ddb", "#5b7fa3", "#c7c2b8"];
-const hullPaint = ["#f4f2ec", "#d9634a", "#3f6c8f", "#2f9e6b", "#e8e3d6", "#24303d"];
+export const carPaint = ["#e5484d", "#2f6fe4", "#f4f4f5", "#27272a", "#9aa3ab", "#2f9e6b", "#e8a317", "#7c4ddb", "#5b7fa3", "#c7c2b8"];
+export const hullPaint = ["#f4f2ec", "#d9634a", "#3f6c8f", "#2f9e6b", "#e8e3d6", "#24303d"];
 
 /** Hillside south-east of the hill road: a soft rise that never covers a street or the core. */
 const smooth = (a: number, b: number, v: number) => {
@@ -49,7 +49,7 @@ const onLot = (x: number, z: number) => lots.some(([x0, x1, z0, z1]) => x > x0 &
 const inCore = (x: number, z: number, pad = 0) =>
   x > CORE.x0 - pad && x < CORE.x1 + pad && z > CORE.z0 - pad && z < CORE.z1 + pad;
 
-interface Building extends Placement {
+export interface Building extends Placement {
   floors: number;
   width: number;
   depth: number;
@@ -161,7 +161,7 @@ function Streets() {
 
 /* ------------------------------------------------------------------ buildings */
 
-function HouseInstances({ items, shadows }: { items: Building[]; shadows: boolean }) {
+export function HouseInstances({ items, shadows }: { items: Building[]; shadows: boolean }) {
   const house = useFacade("house", 3);
   const block = useFacade("block", 7);
   const plaster = useSurface("painted_plaster_wall", 1, 1);
@@ -497,7 +497,7 @@ function Park({ compact }: { compact: boolean }) {
 
 /* ------------------------------------------------------------------ trees and hill */
 
-function Trees({ items, conifer }: { items: Placement[]; conifer: boolean }) {
+export function Trees({ items, conifer }: { items: Placement[]; conifer: boolean }) {
   const res = useMemo(
     () => ({
       trunk: new CylinderGeometry(0.05, 0.08, 0.7, 6).translate(0, 0.35, 0),
@@ -531,7 +531,7 @@ function Hill() {
   }, []);
   return (
     <mesh geometry={geometry} receiveShadow>
-      <meshStandardMaterial {...grass} color="#93ad78" roughness={0.95} />
+      <meshStandardMaterial {...grass} color="#a9c48f" roughness={0.95} />
     </mesh>
   );
 }
