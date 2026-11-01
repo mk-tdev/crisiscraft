@@ -26,8 +26,23 @@ Third-party packages provide rendering, UI, build tooling and schema validation.
 
 The referenced **Assess hackathon eligibility** and **Preview agentic coffee shop** chats and app screenshots informed the interaction benchmark. No source, models, images or other assets from those projects were copied into CrisisCraft. The 3D scenery and presentation assets above were authored in this workspace during the event.
 
+## New work on 30 October – 1 November 2026
+
+- Rebuilt the interface around Priya, Malik and June: free-text/voice orders, bounded role briefings, streamed radio, inspectable prompts and checked dispatch tickets.
+- Added Meta Model API integration, Muse Voice Transcribe, Priya's engine-backed planning tools, peer review/revision, crew initiative, and optional Muse Spark Autopilot.
+- Added generated drill imagery using Muse Image, SAM 3.1 segmentation and Muse Spark interpretation, plus a model-written after-action review with event-ID checks.
+- Expanded the original procedural town into a wider coastal region and added the CC0 Poly Haven materials/props inventoried in [assets-and-licenses.md](assets-and-licenses.md).
+- Added local/Vercel Node handlers, provider tests and the recorded [30 live crew evaluations](eval/crew-eval.md).
+- Fixed stale Autopilot responses after takeover/reset, added total model-workflow deadlines and explicit stream errors, corrected water overlap to intersect both segmentation masks, and added targeted regression tests.
+
 ## Contribution boundaries for the demo
 
-The current demo demonstrates deterministic simulation and manual controls. It must not be presented as live Meta inference, autonomous character reasoning, validated emergency training or an operational response system. Update this record as real integrations and additional features are implemented. Add actual team member identities before submission rather than assigning authorship to fictional character names.
+The team may demonstrate the implemented live Meta features when the deployment is configured and they actually run. Without credentials, the product uses explicitly labelled scripted behaviour; do not present that mode as live inference. The engine remains responsible for valid actions and deterministic outcomes. Generated field images are synthetic scenario illustrations, not real observations. Event-ID checks establish citation existence, not the truth of every generated explanation.
 
-The final submission requires a public repository, accessible three-minute video and all team members listed. Local Git history is evidence of development, not proof that those submission steps are complete.
+Original scenario logic, prompts, orchestration, controls, procedural art and reliability work were built in this workspace during the event with coding assistance. React, Three.js, model services, SAM's parser and Poly Haven art are third-party contributions and are not claimed as team-built models, libraries or assets. The research and reference projects are inspirations, not imported implementations.
+
+## Team attribution and release record
+
+The public repository is [mk-tdev/crisiscraft](https://github.com/mk-tdev/crisiscraft), on `main`. The GitHub account identifies the repository owner; it does not establish every contributor's legal identity or eligibility. Before submitting, the representative must list the actual team members and map their contributions to the work above. Those names have not been supplied in this workspace and must not be invented or replaced with the fictional crew names.
+
+The production alias is https://crisiscraft.vercel.app; unauthenticated HTML and provider-status GET checks passed on 1 November. A complete hosted smoke test of the latest fixes, final three-minute video link, track and complete submission roster remain to be confirmed. Git history and the dated work log support provenance but do not complete the submission form.

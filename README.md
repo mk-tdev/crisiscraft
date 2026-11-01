@@ -48,7 +48,7 @@ Every turn on the radio is a separate call to the **Meta Model API** (`muse-spar
 
 - **Three role reports run in parallel.** Each report sees only its own briefing, projected by the engine from the world state. The future schedule, other roles' private reports and the true road status are never in the prompt.
 - **A planning turn** sees Priya's briefing plus what her teammates said on the radio. It must return a structured plan: truck, request, quantity and route.
-- **June's field photo uses three Meta models in one radio turn.** Press **Bridge photo**: **Muse Image** (`muse-image-1.0`) renders what June sees at the north bridge right now, with the water level taken from the engine's true state; **SAM 3.1** outlines the bridge and the floodwater, and we measure how much of the bridge is under water from the masks; **Muse Spark** reads the photo with that measurement and makes the call (*passable, risky, not passable*). Her reading goes onto the radio Priya hears when she plans next.
+- **June's field photo uses three Meta models in one radio turn.** Press **Bridge photo**: **Muse Image** (`muse-image-1.0`) generates a synthetic drill image of what June would see at the north bridge right now, with the water level taken from the engine's true state; **SAM 3.1** outlines the bridge and the floodwater, and we measure the overlap of the detected bridge and water masks in the generated drill image; **Muse Spark** reads the photo with that measurement and makes the call (*passable, risky, not passable*). Her reading goes onto the radio Priya hears when she plans next.
 - **Spoken orders** go through **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`). Click the mic, speak, click again: the browser records a 24 kHz WAV, the server forwards it to `/v1/asr/transcribe` in push-to-talk mode, with the crew's names and the town's roads as vocabulary hints, and the transcript becomes your order.
 - **Priya plans as a tool-using agent.** Her planning turn runs a Chat Completions tool loop with three functions served by our engine: `list_routes` (her paper map only, no live road status), `check_plan` (the rules validator, dry run) and `submit_plan`. Each call shows on the radio as it happens, so you can watch her test the bridge, get refused, and reroute or hold.
 - **A verifiable after-action review.** At the end of a drill, or in decision replay, **Muse Spark** reads both runs' engine logs and what each crew member knew at each order, then writes the debrief. Every finding must cite event ids; the server checks each one against the replayed runs and removes any finding that cites an event that never happened, and the review says how many it removed.
@@ -88,9 +88,9 @@ npm run dev
 Open **http://127.0.0.1:5173**. The crew API runs inside the dev server at `/api/crew`, the same handler that ships as the Vercel function.
 
 ```sh
-npm run check             # 52 engine, crew and voice tests + strict typecheck + production build
+npm run check             # 85 engine, crew, workflow and UI regression tests + strict typecheck + production build
 npm run meta:check        # one live Muse Spark call and one Voice Transcribe call with your key
-npm run build:vercel      # static app + bundled crew function in .vercel/output
+npm run build:vercel      # static app + five bundled API functions in .vercel/output
 ```
 
 ## How it's built
@@ -101,7 +101,7 @@ npm run build:vercel      # static app + bundled crew function in .vercel/output
 | `packages/crew` | Roster, bounded briefings, Meta provider, scripted crew, deliberation and guardrail loop, NDJSON handler |
 | `packages/contracts` | Shared schemas and types |
 | `apps/web` | React + three.js town, command room, crew view, event log and decision replay |
-| `server/crew.ts`, `server/voice.ts` | Vercel functions (bundled into `/api/*`): the crew rebuilds the run from approved commands, then deliberates; voice forwards a spoken order to Muse Voice Transcribe |
+| `server/*.ts` | Vercel functions (bundled into `/api/*`): the crew rebuilds the run from approved commands, then deliberates; voice forwards a spoken order to Muse Voice Transcribe |
 | `scenarios/harbor-point.json` | The authored scenario: road graph, reports, closures and requests |
 
 The server never trusts the browser's world state. It replays the approved command history through the engine and builds every briefing from that result. The model can propose a plan, but it can't create supplies, open a closed road, overload a truck or move the clock.
@@ -113,3 +113,9 @@ Harbor Point is **fictional**. Its outcomes describe this authored scenario, not
 See [implementation status](docs/implementation-status.md), the [engine contract](docs/simulation-engine.md), the [concept](research/crisiscraft-concept.md), [contributions](docs/contributions.md) and [assets and licences](docs/assets-and-licenses.md).
 
 Built during the Meta Global AI Developer Hackathon, October–November 2026.
+
+## Submission readiness (1 November 2026)
+
+The [public repository](https://github.com/mk-tdev/crisiscraft) and [recorded live crew evaluation](docs/eval/crew-eval.md) are available. The production app is [crisiscraft.vercel.app](https://crisiscraft.vercel.app), verified accessible without login. The final hosted workflow smoke test, three-minute video, track and full team roster are still to be confirmed in the [submission plan](docs/submission-plan.md). [Contributions](docs/contributions.md) identify the event-built work and third-party components.
+
+Autopilot requests are cancelled on takeover or timeline changes. Crew/photo model workflows have a 50-second total budget under the configured 60-second function limit; timeouts return an explicit retry message and never approve a plan. The photo percentage is image-mask overlap, not flood depth or validated road safety. Run the deployed smoke checklist before recording; local tests do not establish hosted reliability.

@@ -17,8 +17,20 @@ const MAX_MOVES = 14;
  * flight (crew idle, clock paused), it asks the AI commander for one move and carries it out.
  */
 export function useAutopilot({
-  enabled, minute, revision, runKey, ended, playing, busy, turns, pending, commands,
-  onOrder, onApprove, onSendBack, onWait,
+  enabled,
+  minute,
+  revision,
+  runKey,
+  ended,
+  playing,
+  busy,
+  turns,
+  pending,
+  commands,
+  onOrder,
+  onApprove,
+  onSendBack,
+  onWait,
 }: {
   enabled: boolean;
   minute: number;
@@ -40,57 +52,90 @@ export function useAutopilot({
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const last = useRef("");
+  const moveHistory = useRef<PilotMove[]>([]);
   useEffect(() => {
+    moveHistory.current = [];
     setMoves([]);
     last.current = "";
   }, [runKey]);
 
   const situation = `${runKey}|${minute}|${revision}|${turns.length}|${pending ?? ""}`;
-  // Let the same render's other effects (a crew member radioing in) start first, then decide.
-  const settled = useRef({ busy, playing, situation });
-  settled.current = { busy, playing, situation };
-  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = window.setTimeout(() => setTick((n) => n + 1), 600);
-    return () => window.clearTimeout(id);
-  }, [situation, busy, playing]);
-  useEffect(() => {
-    if (!enabled || ended || playing || busy || thinking || last.current === situation) return;
-    if (settled.current.busy || settled.current.playing || settled.current.situation !== situation) return;
-    if (moves.length >= MAX_MOVES) return;
-    last.current = situation;
-    setThinking(true);
-    setError(null);
+    if (
+      !enabled ||
+      ended ||
+      playing ||
+      busy ||
+      last.current === situation ||
+      moveHistory.current.length >= MAX_MOVES
+    )
+      return;
     const controller = new AbortController();
-    fetch("/api/commander", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        minute,
-        commands,
-        radio: turns.slice(-24).map((t) => ({ from: who(t.from).name, kind: t.kind, text: t.text.slice(0, 600), ...(t.verdict && t.kind === "review" ? { verdict: t.verdict } : {}) })),
-        pending,
-        history: moves.map((m) => `minute ${m.minute}: ${m.move}${m.move === "order" ? ` "${m.order}"` : ""} (${m.reason})`).slice(-20),
-      }),
-    })
-      .then(async (response) => {
-        const body = (await response.json()) as PilotMove & { error?: string };
-        if (!response.ok) throw new Error(body.error ?? `Autopilot failed (${response.status}).`);
-        const move = { ...body, minute };
-        setMoves((all) => [...all, move]);
-        if (move.move === "order") onOrder(move.order);
-        else if (move.move === "approve") onApprove(move.reason);
-        else if (move.move === "send_back") onSendBack();
-        else onWait();
+    // Settle crew initiative before deciding. This request belongs to this committed situation only.
+    const timer = window.setTimeout(() => {
+      last.current = situation;
+      setThinking(true);
+      setError(null);
+      fetch("/api/commander", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          minute,
+          commands,
+          radio: turns
+            .slice(-24)
+            .map((t) => ({
+              from: who(t.from).name,
+              kind: t.kind,
+              text: t.text.slice(0, 600),
+              ...(t.verdict && t.kind === "review"
+                ? { verdict: t.verdict }
+                : {}),
+            })),
+          pending,
+          history: moveHistory.current
+            .map(
+              (m) =>
+                `minute ${m.minute}: ${m.move}${m.move === "order" ? ` "${m.order}"` : ""} (${m.reason})`,
+            )
+            .slice(-20),
+        }),
       })
-      .catch((e: unknown) => {
-        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Autopilot failed.");
-      })
-      .finally(() => setThinking(false));
+        .then(async (response) => {
+          const body = (await response.json()) as PilotMove & {
+            error?: string;
+          };
+          if (!response.ok)
+            throw new Error(
+              body.error ?? `Autopilot failed (${response.status}).`,
+            );
+          if (controller.signal.aborted) return;
+          const move = { ...body, minute };
+          moveHistory.current = [...moveHistory.current, move];
+          setMoves(moveHistory.current);
+          if (move.move === "order") onOrder(move.order);
+          else if (move.move === "approve") onApprove(move.reason);
+          else if (move.move === "send_back") onSendBack();
+          else onWait();
+        })
+        .catch((e: unknown) => {
+          if (!controller.signal.aborted)
+            setError(e instanceof Error ? e.message : "Autopilot failed.");
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setThinking(false);
+        });
+    }, 600);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+      last.current = "";
+      setThinking(false);
+    };
     // Callbacks change every render; the situation key decides when to act.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ended, playing, busy, thinking, situation, tick]);
+  }, [enabled, ended, playing, busy, situation]);
 
   return { moves, thinking, error };
 }

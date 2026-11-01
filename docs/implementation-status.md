@@ -1,28 +1,45 @@
 # CrisisCraft Implementation Status
 
-Updated 30 October 2026, Singapore time.
+Updated 1 November 2026, Singapore time.
 
-## Brew-style rebuild (30 October)
+## Implemented
 
-The command room was rebuilt around a crew of three role-bounded characters and the house style shared with Brew & Reason.
+- Deterministic Harbor Point engine: resources, road events, receiving constraints, validated approvals, role observations, metrics and branch replay.
+- Muse Spark crew: three bounded reports, Priya's engine-backed `list_routes` / `check_plan` / `submit_plan` tool loop, rules refusal/revision, teammate review and crew initiative.
+- Muse Voice Transcribe spoken orders, optional AI commander (Autopilot), and after-action review with event-ID validation. Citation validation checks that events exist; it does not prove the model's interpretation is correct.
+- June's synthetic field image: Muse Image → SAM 3.1 → Muse Spark. The water statistic intersects detected bridge and water masks in image coordinates. It is not measured flood depth or physical passability. The UI labels the image as generated.
+- Expanded coastal town, streamed radio, visible planning dry runs, camera views, dispatch tickets and synchronized two-run replay.
+- Shared local/Vercel Node handlers for crew, voice, photo, debrief and commander; server-held credentials. Model plans are revalidated against replayed history. Sessions are browser memory, not durable authenticated server sessions.
+- Production alias: https://crisiscraft.vercel.app (unauthenticated HTML and live-provider status GET verified on 1 November). Deployment/preview URLs require login; use the production alias for judges.
+- Public source repository: https://github.com/mk-tdev/crisiscraft, default branch `main`.
 
-- **Crew (`packages/crew`).** Priya (logistics), Malik (shelter) and June (field) each receive a briefing projected by the engine from their own observations. Reports run in parallel. Priya then plans from her briefing and what teammates said, the engine dry-runs the plan, and a refused plan gets one revision with the refusal reason. Turns stream to the browser as NDJSON.
-- **Meta Model API provider.** OpenAI-compatible Chat Completions at `https://api.meta.ai/v1`, `muse-spark-1.3` by default, schema-constrained JSON (`response_format: json_schema`), `reasoning_effort: low`. Muse Spark Open on Baseten works by changing `MODEL_BASE_URL` and `MODEL_NAME`.
-- **Scripted crew.** Without `MODEL_API_KEY`, a deterministic stand-in reads the same briefings and is labelled *Scripted crew · no model key* in the header.
-- **Server authority.** `/api/crew` rebuilds world state from the approved command history with `replay`; it never accepts client state. The same Node handler serves Vite dev and the Vercel function (`npm run build:vercel` → `.vercel/output`).
-- **Interface.** Light neutral UI with the orange accent; free-text orders with suggestions; streamed transcript with cited reports and "What they saw" prompt inspection; plan card gated by the rules check; Crew tab showing each role's knowledge; event log with Rewind; minute strip that only reveals past events and known deadlines; four concept cards; generalised decision replay with two synchronized 3D views and an event-grounded debrief.
-- **Town.** CC0 Poly Haven sky, textures and props (see [assets](assets-and-licenses.md)); rising water, closable bridge with barriers, school power state, crates matching stock and deliveries, procedural trucks and people, rain and lightning.
+## Recorded live evidence
+
+The repository includes [30 live Muse Spark crew evaluations](eval/crew-eval.md) dated 1 November, with [raw results](eval/crew-eval.json). Full radio chose the hill route in 10/10 runs; removing June's report chose the bridge in 10/10; an explicit bridge order retained the bridge while June objected in 10/10. These are scenario-specific measurements, not evidence of validated training effectiveness. The recorded median deliberation times are 10.7–19.9 seconds across the three conditions.
+
+## Reliability fixes — 1 November
+
+Autopilot aborts and discards requests after takeover, reset, timeline/context changes or unmounting. Its 600 ms settle period precedes the model request; changing its thinking state does not cancel the request itself.
+
+Crew and photo workflows share a maximum **50-second total model budget**, below the **60-second Vercel function configuration**. The budget spans reports, tool steps, revisions and photo stages; it does not reset per call. Deadline failures abort upstream calls and terminate NDJSON with an actionable error. Late output is suppressed. The browser allows 55 seconds for these requests and rejects incomplete streams rather than treating partial output as success.
+
+`MODEL_REQUEST_BUDGET_MS` can lower, but cannot increase, the 50-second workflow budget. Input upload and hosting/platform behaviour are separate concerns; a shorter hosting limit must be accommodated when deploying.
 
 ## Verification
 
-- `npm run check`: 48 tests (36 engine, 12 crew) pass, strict typecheck passes, production build succeeds.
-- Bundled Vercel function smoke-tested locally: streams 7 NDJSON lines ending in a validated hill-road plan.
-- Headless Chromium (SwiftShader) drove a full drill at 1440×900 with no console errors: order → reports → plan → approve → run to end → rewind → bridge order → decision replay (A on time at minute 8; B 2 minutes late after the bridge closure), plus a 390-px mobile pass. Screenshots: `docs/screenshots/town.jpg`, `crew.jpg`, `replay.jpg`.
+- `npm run check`: 85 tests, strict TypeScript checking and production build.
+- Regression tests exercise delayed Autopilot responses after takeover/reset/switch/unmount, stale approvals and old requests completing during a newer request.
+- Mask tests exercise background water, sparse bridge masks, empty masks, fractional overlap and differing raster resolutions.
+- Real localhost HTTP stand-ins complete role reports or image generation, then stall planning/SAM. Both server workflows emit terminal timeout errors; partial client streams fail clearly. No live model credits are used by these tests.
+- `node scripts/build-vercel.mjs` verifies production packaging for all five functions.
 
-## Not yet done
+The latest reliability changes have automated local verification. A fresh hosted, logged-out browser smoke test is still required; historical screenshots and earlier browser checks are not proof of the latest deployment.
 
-1. **A live Meta model run.** No API key was available; request shape is unit-tested against a mocked endpoint only. The prompts need tuning against real `muse-spark-1.3` output once credits are claimed.
-2. Public deployment, public repository, demo video and submission form.
-3. Voice, extra scenarios and facilitator notes remain optional.
+## Remaining submission steps
 
-The older screenshots (`command-*.png`, `route-comparison.png`) and `command-room-verification.md` describe the previous UI.
+1. Verify the deployed fixes at the public production alias: complete crew, voice, photo, review and Autopilot workflows against its real limits and model credentials.
+2. Record/publish the required three-minute video showing only event-built work and identifying the contributions and third-party art.
+3. Confirm one track, the complete team roster (maximum four), eligibility and the submitting representative.
+4. Complete the submission form and verify the public repo and video links while logged out.
+
+See [submission plan](submission-plan.md), [contributions](contributions.md) and [assets and rights](assets-and-licenses.md). Older `command-*.png`, `route-comparison.png` and `command-room-verification.md` document previous iterations.
