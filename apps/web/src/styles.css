@@ -420,3 +420,23 @@ select { appearance: none; padding: 7px 10px; font-family: var(--mono); font-siz
 .pilot b { font-weight: 600; }
 .pilot small { color: #ffffff99; }
 .pilot .notice { color: #ffb4a8; }
+/* Keep replay evidence and every transport control readable on a phone. */
+@media (max-width: 760px) {
+  .compare { display: flex; flex-direction: column; gap: 0; padding-bottom: 210px; }
+  .compare-top { position: relative; inset: auto; order: -1; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .compare-title { flex: 1 1 100%; }
+  .compare-title h2 { font-size: 23px; }
+  .compare-top > button { margin-left: auto; }
+  .future { flex: 0 0 65vh; min-height: 500px; }
+  .future-head { top: 12px; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+  .future-head > div { min-width: 0; }
+  .future-head > .pill { grid-column: 2; justify-self: start; }
+  .future-head p { overflow-wrap: anywhere; font-size: 12px; }
+  .future-foot { bottom: 16px; }
+  .compare-spine { flex: none; height: 4px; }
+  .compare-console { left: 12px; right: 12px; width: auto; transform: none; min-width: 0; max-height: 40dvh; overflow: auto; }
+  .compare-console .debrief { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .scrub { flex-wrap: wrap; min-width: 0; }
+  .scrub input { flex: 1 1 calc(100% - 116px); min-width: 0; width: 0; }
+  .scrub > .ghost, .scrub > .go:not(.icon) { flex: 1 1 28%; min-width: 0; padding: 8px; }
+}
