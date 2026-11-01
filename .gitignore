@@ -10,3 +10,6 @@ coverage/
 *.tsbuildinfo
 .data/
 .vercel/
+
+# Local browser rehearsal captures and CLI state
+output/playwright/

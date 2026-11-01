@@ -31,30 +31,59 @@ function useCrew(minute: number, revision: number) {
   const [state, setState] = useState<CrewState | null>(null);
   const abort = useRef<AbortController | null>(null);
   type Body = Parameters<typeof askCrew>[0];
-  const ask = useCallback(async (order: string, commands: Body["commands"], photo?: Body["photo"], initiative?: Body["initiative"]) => {
-    abort.current?.abort();
-    const controller = new AbortController();
-    abort.current = controller;
-    setState({ order, turns: [], result: null, error: null, loading: true });
-    try {
-      const result = await askCrew({ minute, order, commands, photo, initiative }, (turn: CrewTurn) =>
-        setState((s) => (s ? { ...s, turns: [...s.turns, turn] } : s)), controller.signal);
-      setState((s) => (s ? { ...s, turns: result.turns, result, loading: false } : s));
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      setState((s) => (s ? { ...s, loading: false, error: error instanceof Error ? error.message : "Unknown error." } : s));
-    }
-  }, [minute]);
+  const ask = useCallback(
+    async (
+      order: string,
+      commands: Body["commands"],
+      photo?: Body["photo"],
+      initiative?: Body["initiative"],
+    ) => {
+      abort.current?.abort();
+      const controller = new AbortController();
+      abort.current = controller;
+      setState({ order, turns: [], result: null, error: null, loading: true });
+      try {
+        const result = await askCrew(
+          { minute, order, commands, photo, initiative },
+          (turn: CrewTurn) =>
+            setState((s) => (s ? { ...s, turns: [...s.turns, turn] } : s)),
+          controller.signal,
+        );
+        setState((s) =>
+          s ? { ...s, turns: result.turns, result, loading: false } : s,
+        );
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setState((s) =>
+          s
+            ? {
+                ...s,
+                loading: false,
+                error:
+                  error instanceof Error ? error.message : "Unknown error.",
+              }
+            : s,
+        );
+      }
+    },
+    [minute],
+  );
   const clear = useCallback(() => {
     abort.current?.abort();
     setState(null);
   }, []);
-  const stale = !!state?.result && (state.result.minute !== minute || state.result.revision !== revision);
+  const stale =
+    !!state?.result &&
+    (state.result.minute !== minute || state.result.revision !== revision);
   return { state, setState, ask, clear, stale };
 }
 
 function firstVisit() {
-  try { return !localStorage.getItem(BRIEFED); } catch { return true; }
+  try {
+    return !localStorage.getItem(BRIEFED);
+  } catch {
+    return true;
+  }
 }
 
 export function App() {
@@ -64,14 +93,20 @@ export function App() {
   const field = usePhoto(world.tick);
   const [autopilot, setAutopilot] = useState(false);
   const [runId, setRunId] = useState(0);
-  const history = timeline.decisions.map(({ tick, command }) => ({ tick, command }));
+  const history = timeline.decisions.map(({ tick, command }) => ({
+    tick,
+    command,
+  }));
   // A photo belongs to one run: drop it when the timeline changes or a rewind goes back before it.
   const photoMinute = field.photo?.minute;
   const clearPhoto = field.clear;
   useEffect(() => {
     if (photoMinute !== undefined && photoMinute > world.tick) clearPhoto();
   }, [photoMinute, world.tick, clearPhoto]);
-  useEffect(() => clearPhoto(), [active, timeline.decisions.length, clearPhoto]);
+  useEffect(
+    () => clearPhoto(),
+    [active, timeline.decisions.length, clearPhoto],
+  );
 
   // Crew initiative: when a new report reaches a crew member, the clock pauses and they radio in
   // unprompted; Priya answers with what should change. Each report triggers once per timeline.
@@ -80,19 +115,31 @@ export function App() {
   const crewAsk = crewChat.ask;
   const pause = drill.setPlaying;
   useEffect(() => {
-    for (const key of [...heard.current]) if (Number(key.split("|")[2]) > world.tick) heard.current.delete(key);
+    for (const key of [...heard.current])
+      if (Number(key.split("|")[2]) > world.tick) heard.current.delete(key);
     if (!initiative || drill.ended || crewChat.state?.loading) return;
     const since = timeline.branchTick ?? harborPoint.checkpointTick;
     const news = world.observations
       .filter((o) => o.receivedTick > since && o.receivedTick <= world.tick)
-      .flatMap((o) => roles.filter((r) => o.audience.includes(r)).map((role) => ({ o, role })))
+      .flatMap((o) =>
+        roles
+          .filter((r) => o.audience.includes(r))
+          .map((role) => ({ o, role })),
+      )
       .sort((a, b) => roles.indexOf(b.role) - roles.indexOf(a.role))
-      .find(({ o }) => !heard.current.has(`${active}|${o.id}|${o.receivedTick}`));
+      .find(
+        ({ o }) => !heard.current.has(`${active}|${o.id}|${o.receivedTick}`),
+      );
     if (!news) return;
     heard.current.add(`${active}|${news.o.id}|${news.o.receivedTick}`);
     pause(false);
     setRadioOpen(true);
-    void crewAsk(`${crew[news.role].name} radioed in at minute ${mm(world.tick)}`, history, undefined, { role: news.role, observationId: news.o.id });
+    void crewAsk(
+      `${crew[news.role].name} radioed in at minute ${mm(world.tick)}`,
+      history,
+      undefined,
+      { role: news.role, observationId: news.o.id },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [world.tick, active, initiative, crewChat.state?.loading]);
 
@@ -100,7 +147,11 @@ export function App() {
     drill.setPlaying(false);
     setRadioOpen(true);
     const read = field.photo?.read;
-    void crewChat.ask(order, history, read ? { minute: field.photo!.minute, text: read.message } : undefined);
+    void crewChat.ask(
+      order,
+      history,
+      read ? { minute: field.photo!.minute, text: read.message } : undefined,
+    );
   };
   const ticket = crewChat.state?.result?.command?.actions[0];
   const pilot = useAutopilot({
@@ -112,14 +163,19 @@ export function App() {
     playing: drill.playing,
     busy: !!crewChat.state?.loading || !!field.photo?.loading,
     turns: crewChat.state?.turns ?? [],
-    pending: ticket && !crewChat.stale ? `${trucks[ticket.vehicleId]}, ${ticket.quantity} crates to the ${requestNames[ticket.requestId]} via ${routeName(ticket.route)}; passed the rules check.` : null,
+    pending:
+      ticket && !crewChat.stale
+        ? `${trucks[ticket.vehicleId]}, ${ticket.quantity} crates to the ${requestNames[ticket.requestId]} via ${routeName(ticket.route)}; passed the rules check.`
+        : null,
     commands: history,
     onOrder: askCrewNow,
     onApprove: (reason) => approveRef.current(reason),
     onSendBack: () => crewChat.clear(),
     onWait: () => drill.setPlaying(true),
   });
-  const [provider, setProvider] = useState<ProviderInfo | null | undefined>(undefined);
+  const [provider, setProvider] = useState<ProviderInfo | null | undefined>(
+    undefined,
+  );
   const [voice, setVoice] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [radioOpen, setRadioOpen] = useState(true);
@@ -140,9 +196,16 @@ export function App() {
   }, []);
   const closeBriefing = useCallback(() => {
     setBriefing(false);
-    try { localStorage.setItem(BRIEFED, "1"); } catch { /* private mode: show again next time */ }
+    try {
+      localStorage.setItem(BRIEFED, "1");
+    } catch {
+      /* private mode: show again next time */
+    }
   }, []);
-  const camera = (id: CameraView) => { setView(id); setCameraRevision((r) => r + 1); };
+  const camera = (id: CameraView) => {
+    setView(id);
+    setCameraRevision((r) => r + 1);
+  };
 
   const action = crewChat.state?.result?.command?.actions[0];
   const approve = (note?: string) => {
@@ -150,46 +213,116 @@ export function App() {
     if (!result?.command || !action) return;
     const summary = `${trucks[action.vehicleId]} · ${action.quantity} crates → ${requestNames[action.requestId]} via ${routeName(action.route)}`;
     drill.approve({ command: result.command, order: result.order, summary });
-    crewChat.setState((s) => s && {
-      ...s,
-      result: { ...result, command: null },
-      turns: [...s.turns, { id: `approved-${result.command!.id}`, from: "commander", kind: "order", text: note ? `Approved: ${note} ${summary}.` : `Approved. ${summary}.`, cites: [] }],
-    });
+    crewChat.setState(
+      (s) =>
+        s && {
+          ...s,
+          result: { ...result, command: null },
+          turns: [
+            ...s.turns,
+            {
+              id: `approved-${result.command!.id}`,
+              from: "commander",
+              kind: "order",
+              text: note
+                ? `Approved: ${note} ${summary}.`
+                : `Approved. ${summary}.`,
+              cites: [],
+            },
+          ],
+        },
+    );
     camera("convoy");
   };
   const approveRef = useRef(approve);
   approveRef.current = approve;
-  const newDrill = () => { drill.reset(); crewChat.clear(); setComparing(false); setRunId((n) => n + 1); camera("overview"); };
-  const switchTo = (id: "A" | "B") => { drill.switchTo(id); crewChat.clear(); };
+  const newDrill = () => {
+    setAutopilot(false);
+    field.clear();
+    setReviewing(null);
+    heard.current.clear();
+    drill.reset();
+    crewChat.clear();
+    setComparing(false);
+    setRunId((n) => n + 1);
+    camera("overview");
+  };
+  const switchTo = (id: "A" | "B") => {
+    setAutopilot(false);
+    drill.switchTo(id);
+    crewChat.clear();
+  };
 
-  const markers: CrewMarker[] = useMemo(() => roles.map((role) => {
-    const s = crewChat.state;
-    const said = s?.turns.filter((t) => t.from === role).at(-1);
-    const fresh = s && (s.loading || s.result?.minute === world.tick);
-    return {
-      role, name: crew[role].name, title: crew[role].title,
-      status: s?.loading && !said ? "thinking" : fresh && said ? "speaking" : "idle",
-      line: fresh ? said?.text : undefined,
-    };
-  }), [crewChat.state, world.tick]);
+  const markers: CrewMarker[] = useMemo(
+    () =>
+      roles.map((role) => {
+        const s = crewChat.state;
+        const said = s?.turns.filter((t) => t.from === role).at(-1);
+        const fresh = s && (s.loading || s.result?.minute === world.tick);
+        return {
+          role,
+          name: crew[role].name,
+          title: crew[role].title,
+          status:
+            s?.loading && !said
+              ? "thinking"
+              : fresh && said
+                ? "speaking"
+                : "idle",
+          line: fresh ? said?.text : undefined,
+        };
+      }),
+    [crewChat.state, world.tick],
+  );
 
   const school = world.requests.school;
-  const moving = Object.values(world.vehicles).find((v) => v.status === "travelling");
-  const title = drill.ended ? "The water has had its say."
-    : school?.completedTick != null ? "The school has its crates."
-      : moving ? `${trucks[moving.id]} is on the road.`
+  const moving = Object.values(world.vehicles).find(
+    (v) => v.status === "travelling",
+  );
+  const title = drill.ended
+    ? "The water has had its say."
+    : school?.completedTick != null
+      ? "The school has its crates."
+      : moving
+        ? `${trucks[moving.id]} is on the road.`
         : "Six crates. One school. Nine minutes.";
-  const latest = [...world.events].reverse().find((e) => e.type !== "observation-received" && e.type !== "edge-arrived");
+  const latest = [...world.events]
+    .reverse()
+    .find(
+      (e) => e.type !== "observation-received" && e.type !== "edge-arrived",
+    );
   // Branch decisions are copied by reference, so a new object means the what-if made its own choice.
-  const branchReady = !!timelines.B?.decisions.some((d) => !timelines.A.decisions.includes(d));
+  const branchReady = !!timelines.B?.decisions.some(
+    (d) => !timelines.A.decisions.includes(d),
+  );
   const reserve = idleAtDepot(harborPoint, world);
-  const schoolState = school?.completedTick != null ? (school.completedTick <= school.dueTick ? "good" : "warn") : world.tick > (school?.dueTick ?? 99) ? "bad" : "";
+  const schoolState =
+    school?.completedTick != null
+      ? school.completedTick <= school.dueTick
+        ? "good"
+        : "warn"
+      : world.tick > (school?.dueTick ?? 99)
+        ? "bad"
+        : "";
 
   if (comparing && timelines.B) {
     return (
       <div className="room">
-        <Compare a={timelines.A} b={timelines.B} onClose={() => setComparing(false)} onReview={voice ? () => setReviewing("both") : undefined} />
-        {reviewing && <Review runs={[{ label: "A", timeline: timelines.A }, { label: "B", timeline: timelines.B! }]} onClose={() => setReviewing(null)} />}
+        <Compare
+          a={timelines.A}
+          b={timelines.B}
+          onClose={() => setComparing(false)}
+          onReview={voice ? () => setReviewing("both") : undefined}
+        />
+        {reviewing && (
+          <Review
+            runs={[
+              { label: "A", timeline: timelines.A },
+              { label: "B", timeline: timelines.B! },
+            ]}
+            onClose={() => setReviewing(null)}
+          />
+        )}
       </div>
     );
   }
@@ -202,7 +335,12 @@ export function App() {
           progress={drill.progress}
           cameraView={view}
           cameraRevision={cameraRevision}
-          route={action?.route ?? (crewChat.state?.loading ? crewChat.state.turns.filter((t) => t.route).at(-1)?.route : undefined)}
+          route={
+            action?.route ??
+            (crewChat.state?.loading
+              ? crewChat.state.turns.filter((t) => t.route).at(-1)?.route
+              : undefined)
+          }
           selected={selected}
           onSelect={setSelected}
           crew={markers}
@@ -214,32 +352,80 @@ export function App() {
 
       <header className="hud glass">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">c<i>.</i></span>
-          <strong>Crisis<em>Craft</em></strong>
+          <span className="brand-mark" aria-hidden="true">
+            c<i>.</i>
+          </span>
+          <strong>
+            Crisis<em>Craft</em>
+          </strong>
         </div>
 
         <div className="mission-clock">
-          <button className="go icon" onClick={() => drill.setPlaying(!drill.playing)} disabled={drill.ended} aria-label={drill.playing ? "Pause" : "Play"}>
+          <button
+            className="go icon"
+            onClick={() => drill.setPlaying(!drill.playing)}
+            disabled={drill.ended}
+            aria-label={drill.playing ? "Pause" : "Play"}
+          >
             <Icon name={drill.playing ? "pause" : "play"} size={15} />
           </button>
-          <button className="ghost icon" onClick={drill.step} disabled={drill.ended || drill.playing} aria-label="Step one minute" title="Step one minute">
+          <button
+            className="ghost icon"
+            onClick={drill.step}
+            disabled={drill.ended || drill.playing}
+            aria-label="Step one minute"
+            title="Step one minute"
+          >
             <Icon name="step" size={15} />
           </button>
-          <MinuteStrip world={world} progress={drill.progress} decisions={timeline.decisions} />
-          <select value={drill.speed} onChange={(e) => drill.setSpeed(Number(e.target.value))} aria-label="Speed">
-            {[1, 2, 4].map((s) => <option key={s} value={s}>{s}×</option>)}
+          <MinuteStrip
+            world={world}
+            progress={drill.progress}
+            decisions={timeline.decisions}
+          />
+          <select
+            value={drill.speed}
+            onChange={(e) => drill.setSpeed(Number(e.target.value))}
+            aria-label="Speed"
+          >
+            {[1, 2, 4].map((s) => (
+              <option key={s} value={s}>
+                {s}×
+              </option>
+            ))}
           </select>
-          <button className="ghost" onClick={drill.runToEnd} disabled={drill.ended} title="Run to minute 15">End <Icon name="arrow" size={13} /></button>
+          <button
+            className="ghost"
+            onClick={drill.runToEnd}
+            disabled={drill.ended}
+            title="Run to minute 15"
+          >
+            End <Icon name="arrow" size={13} />
+          </button>
         </div>
 
         <div className="hud-right">
           {timelines.B && (
             <div className="segmented" role="group" aria-label="Timeline">
-              <button className={active === "A" ? "on" : ""} onClick={() => switchTo("A")}>A · your run</button>
-              <button className={active === "B" ? "on" : ""} onClick={() => switchTo("B")}>B · what if</button>
+              <button
+                className={active === "A" ? "on" : ""}
+                onClick={() => switchTo("A")}
+              >
+                A · your run
+              </button>
+              <button
+                className={active === "B" ? "on" : ""}
+                onClick={() => switchTo("B")}
+              >
+                B · what if
+              </button>
             </div>
           )}
-          {branchReady && <button className="go" onClick={() => setComparing(true)}><Icon name="split" size={14} /> Replay</button>}
+          {branchReady && (
+            <button className="go" onClick={() => setComparing(true)}>
+              <Icon name="split" size={14} /> Replay
+            </button>
+          )}
           <button
             className={`autopilot ${autopilot ? "on" : ""}`}
             onClick={() => setAutopilot(!autopilot)}
@@ -250,56 +436,146 @@ export function App() {
           </button>
           <span
             className={`status ${provider?.live ? "live" : provider ? "scripted" : "off"}`}
-            title={provider?.live ? "Every crew turn is a live Meta model call." : "Add MODEL_API_KEY to run the crew on the Meta Model API."}
+            title={
+              provider?.live
+                ? "Every crew turn is a live Meta model call."
+                : "Add MODEL_API_KEY to run the crew on the Meta Model API."
+            }
           >
             <i />
-            {provider === undefined ? "Connecting…" : provider === null ? "Crew offline" : provider.live ? `Meta · ${provider.model}` : "Scripted crew"}
+            {provider === undefined
+              ? "Connecting…"
+              : provider === null
+                ? "Crew offline"
+                : provider.live
+                  ? `Meta · ${provider.model}`
+                  : "Scripted crew"}
           </span>
-          <button className={`ghost ${drawer === "crew" ? "on" : ""}`} onClick={() => setDrawer(drawer === "crew" ? null : "crew")}><Icon name="users" size={15} /> Crew</button>
-          <button className={`ghost ${drawer === "log" ? "on" : ""}`} onClick={() => setDrawer(drawer === "log" ? null : "log")}>
-            <Icon name="clock" size={15} /> Log{timeline.decisions.length > 0 && <span className="count">{timeline.decisions.length}</span>}
+          <button
+            className={`ghost ${drawer === "crew" ? "on" : ""}`}
+            onClick={() => setDrawer(drawer === "crew" ? null : "crew")}
+          >
+            <Icon name="users" size={15} /> Crew
           </button>
-          <button className="ghost icon" onClick={() => setBriefing(true)} aria-label="How it works" title="How it works"><Icon name="info" size={16} /></button>
-          <button className="ghost icon" onClick={newDrill} aria-label="New drill" title="New drill"><Icon name="reset" size={16} /></button>
+          <button
+            className={`ghost ${drawer === "log" ? "on" : ""}`}
+            onClick={() => setDrawer(drawer === "log" ? null : "log")}
+          >
+            <Icon name="clock" size={15} /> Log
+            {timeline.decisions.length > 0 && (
+              <span className="count">{timeline.decisions.length}</span>
+            )}
+          </button>
+          <button
+            className="ghost icon"
+            onClick={() => setBriefing(true)}
+            aria-label="How it works"
+            title="How it works"
+          >
+            <Icon name="info" size={16} />
+          </button>
+          <button
+            className="ghost icon"
+            onClick={newDrill}
+            aria-label="New drill"
+            title="New drill"
+          >
+            <Icon name="reset" size={16} />
+          </button>
         </div>
       </header>
 
       <section className="situation">
         <span className="eyebrow accent">
-          {active === "B" ? `Timeline B · what if, from minute ${mm(timeline.branchTick ?? 0)}` : "Harbor Point · coastal flood"}
+          {active === "B"
+            ? `Timeline B · what if, from minute ${mm(timeline.branchTick ?? 0)}`
+            : "Harbor Point · coastal flood"}
         </span>
         <h1>{title}</h1>
         <ul className="conditions">
-          <li className={world.roads.JS ? "warn" : "bad"}><Icon name="bridge" size={14} /> Bridge {world.roads.JS ? "open" : "closed"}</li>
-          <li className={world.receiving.S ? "good" : "bad"}><Icon name="home" size={14} /> School {world.receiving.S ? "has power" : "no power"}</li>
-          <li><Icon name="layers" size={14} /> {world.stock} crates</li>
-          <li className={schoolState}><Icon name="clock" size={14} /> {school?.completedTick != null ? `School supplied min ${mm(school.completedTick)}` : "School due min 09"}</li>
-          <li className={reserve >= 1 ? "good" : "bad"}><Icon name="truck" size={14} /> {reserve} in reserve</li>
+          <li className={world.roads.JS ? "warn" : "bad"}>
+            <Icon name="bridge" size={14} /> Bridge{" "}
+            {world.roads.JS ? "open" : "closed"}
+          </li>
+          <li className={world.receiving.S ? "good" : "bad"}>
+            <Icon name="home" size={14} /> School{" "}
+            {world.receiving.S ? "has power" : "no power"}
+          </li>
+          <li>
+            <Icon name="layers" size={14} /> {world.stock} crates
+          </li>
+          <li className={schoolState}>
+            <Icon name="clock" size={14} />{" "}
+            {school?.completedTick != null
+              ? `School supplied min ${mm(school.completedTick)}`
+              : "School due min 09"}
+          </li>
+          <li className={reserve >= 1 ? "good" : "bad"}>
+            <Icon name="truck" size={14} /> {reserve} in reserve
+          </li>
         </ul>
       </section>
 
       {latest && (
-        <div key={latest.id} className={`ticker glass tone-${describe(latest).tone}`} role="status">
-          <span className="time">{mm(latest.tick)}</span> {describe(latest).text}
+        <div
+          key={latest.id}
+          className={`ticker glass tone-${describe(latest).tone}`}
+          role="status"
+        >
+          <span className="time">{mm(latest.tick)}</span>{" "}
+          {describe(latest).text}
         </div>
       )}
 
-      <nav className={`camrail glass ${drawer ? "shifted" : ""}`} aria-label="Camera">
+      <nav
+        className={`camrail glass ${drawer ? "shifted" : ""}`}
+        aria-label="Camera"
+      >
         {cameras.map((c) => (
-          <button key={c.id} className={view === c.id ? "on" : ""} onClick={() => camera(c.id)} title={c.label}>
-            <Icon name={c.icon} size={17} /><span>{c.label}</span>
+          <button
+            key={c.id}
+            className={view === c.id ? "on" : ""}
+            onClick={() => camera(c.id)}
+            title={c.label}
+          >
+            <Icon name={c.icon} size={17} />
+            <span>{c.label}</span>
           </button>
         ))}
         <hr />
-        <button className={weather ? "on-soft" : ""} onClick={() => setWeather(!weather)} aria-pressed={weather} title="Rain"><Icon name="rain" size={17} /><span>Rain</span></button>
-        <button className={labels ? "on-soft" : ""} onClick={() => setLabels(!labels)} aria-pressed={labels} title="Labels"><Icon name="eye" size={17} /><span>Labels</span></button>
+        <button
+          className={weather ? "on-soft" : ""}
+          onClick={() => setWeather(!weather)}
+          aria-pressed={weather}
+          title="Rain"
+        >
+          <Icon name="rain" size={17} />
+          <span>Rain</span>
+        </button>
+        <button
+          className={labels ? "on-soft" : ""}
+          onClick={() => setLabels(!labels)}
+          aria-pressed={labels}
+          title="Labels"
+        >
+          <Icon name="eye" size={17} />
+          <span>Labels</span>
+        </button>
       </nav>
 
       <Radio
         world={world}
         state={crewChat.state}
         photo={field.photo}
-        onPhoto={voice && !drill.ended ? () => { drill.setPlaying(false); setRadioOpen(true); void field.take(history); } : undefined}
+        onPhoto={
+          voice && !drill.ended
+            ? () => {
+                drill.setPlaying(false);
+                setRadioOpen(true);
+                void field.take(history);
+              }
+            : undefined
+        }
         initiative={initiative}
         pilot={autopilot ? pilot : null}
         onInitiative={() => setInitiative(!initiative)}
@@ -309,6 +585,7 @@ export function App() {
 
       <div className="dispatch-dock">
         <Dispatch
+          key={`${runId}|${active}`}
           world={world}
           state={crewChat.state}
           ended={drill.ended}
@@ -318,28 +595,69 @@ export function App() {
           onApprove={() => approve()}
           onDismiss={crewChat.clear}
           onReplay={branchReady ? () => setComparing(true) : null}
-          onReview={voice && timeline.decisions.length ? () => setReviewing("run") : undefined}
+          onReview={
+            voice && timeline.decisions.length
+              ? () => setReviewing("run")
+              : undefined
+          }
         />
       </div>
 
-      <aside className={`drawer glass ${drawer ? "open" : ""}`} aria-hidden={!drawer}>
+      <aside
+        className={`drawer glass ${drawer ? "open" : ""}`}
+        aria-hidden={!drawer}
+      >
         <div className="drawer-head">
           <div className="segmented">
-            <button className={drawer === "crew" ? "on" : ""} onClick={() => setDrawer("crew")}>Crew knowledge</button>
-            <button className={drawer === "log" ? "on" : ""} onClick={() => setDrawer("log")}>Event log</button>
+            <button
+              className={drawer === "crew" ? "on" : ""}
+              onClick={() => setDrawer("crew")}
+            >
+              Crew knowledge
+            </button>
+            <button
+              className={drawer === "log" ? "on" : ""}
+              onClick={() => setDrawer("log")}
+            >
+              Event log
+            </button>
           </div>
-          <button className="ghost icon" onClick={() => setDrawer(null)} aria-label="Close"><Icon name="close" size={16} /></button>
+          <button
+            className="ghost icon"
+            onClick={() => setDrawer(null)}
+            aria-label="Close"
+          >
+            <Icon name="close" size={16} />
+          </button>
         </div>
         <div className="drawer-body">
-          {drawer === "crew" && <CrewPanel world={world} turns={crewChat.state?.turns ?? []} />}
+          {drawer === "crew" && (
+            <CrewPanel world={world} turns={crewChat.state?.turns ?? []} />
+          )}
           {drawer === "log" && (
-            <LogPanel world={world} decisions={timeline.decisions} timeline={active} onRewind={(i) => { drill.rewind(i); crewChat.clear(); setDrawer(null); setRunId((n) => n + 1); }} />
+            <LogPanel
+              world={world}
+              decisions={timeline.decisions}
+              timeline={active}
+              onRewind={(i) => {
+                setAutopilot(false);
+                drill.rewind(i);
+                crewChat.clear();
+                setDrawer(null);
+                setRunId((n) => n + 1);
+              }}
+            />
           )}
         </div>
       </aside>
 
       <Briefing open={briefing} onClose={closeBriefing} />
-      {reviewing === "run" && <Review runs={[{ label: active, timeline }]} onClose={() => setReviewing(null)} />}
+      {reviewing === "run" && (
+        <Review
+          runs={[{ label: active, timeline }]}
+          onClose={() => setReviewing(null)}
+        />
+      )}
     </div>
   );
 }
