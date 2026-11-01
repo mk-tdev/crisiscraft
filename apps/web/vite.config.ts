@@ -13,6 +13,10 @@ function crewApi(env: Record<string, string>): Plugin {
         const { nodeCrewHandler } = await server.ssrLoadModule('@crisiscraft/crew') as typeof import('@crisiscraft/crew');
         await nodeCrewHandler(env)(req, res);
       });
+      server.middlewares.use('/api/commander', async (req, res) => {
+        const { nodeCommanderHandler } = await server.ssrLoadModule('@crisiscraft/crew') as typeof import('@crisiscraft/crew');
+        await nodeCommanderHandler(env)(req, res);
+      });
       server.middlewares.use('/api/debrief', async (req, res) => {
         const { nodeDebriefHandler } = await server.ssrLoadModule('@crisiscraft/crew') as typeof import('@crisiscraft/crew');
         await nodeDebriefHandler(env)(req, res);

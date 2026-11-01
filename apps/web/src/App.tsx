@@ -10,6 +10,7 @@ import { Icon, type IconName } from "./icons";
 import { Radio, type CrewState } from "./components/Radio";
 import { usePhoto } from "./components/Photo";
 import { Review } from "./components/Review";
+import { useAutopilot } from "./autopilot";
 import { Dispatch } from "./components/Dispatch";
 import { CrewPanel } from "./components/Crew";
 import { LogPanel } from "./components/Log";
@@ -61,6 +62,8 @@ export function App() {
   const { world, timeline, timelines, active } = drill;
   const crewChat = useCrew(world.tick, world.revision);
   const field = usePhoto(world.tick);
+  const [autopilot, setAutopilot] = useState(false);
+  const [runId, setRunId] = useState(0);
   const history = timeline.decisions.map(({ tick, command }) => ({ tick, command }));
   // A photo belongs to one run: drop it when the timeline changes or a rewind goes back before it.
   const photoMinute = field.photo?.minute;
@@ -78,9 +81,10 @@ export function App() {
   const pause = drill.setPlaying;
   useEffect(() => {
     for (const key of [...heard.current]) if (Number(key.split("|")[2]) > world.tick) heard.current.delete(key);
-    if (!initiative || drill.ended || world.tick < 1 || crewChat.state?.loading) return;
+    if (!initiative || drill.ended || crewChat.state?.loading) return;
+    const since = timeline.branchTick ?? harborPoint.checkpointTick;
     const news = world.observations
-      .filter((o) => o.receivedTick === world.tick)
+      .filter((o) => o.receivedTick > since && o.receivedTick <= world.tick)
       .flatMap((o) => roles.filter((r) => o.audience.includes(r)).map((role) => ({ o, role })))
       .sort((a, b) => roles.indexOf(b.role) - roles.indexOf(a.role))
       .find(({ o }) => !heard.current.has(`${active}|${o.id}|${o.receivedTick}`));
@@ -90,7 +94,31 @@ export function App() {
     setRadioOpen(true);
     void crewAsk(`${crew[news.role].name} radioed in at minute ${mm(world.tick)}`, history, undefined, { role: news.role, observationId: news.o.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [world.tick, active, initiative]);
+  }, [world.tick, active, initiative, crewChat.state?.loading]);
+
+  const askCrewNow = (order: string) => {
+    drill.setPlaying(false);
+    setRadioOpen(true);
+    const read = field.photo?.read;
+    void crewChat.ask(order, history, read ? { minute: field.photo!.minute, text: read.message } : undefined);
+  };
+  const ticket = crewChat.state?.result?.command?.actions[0];
+  const pilot = useAutopilot({
+    enabled: autopilot,
+    minute: world.tick,
+    revision: world.revision,
+    runKey: `${runId}|${active}`,
+    ended: drill.ended,
+    playing: drill.playing,
+    busy: !!crewChat.state?.loading || !!field.photo?.loading,
+    turns: crewChat.state?.turns ?? [],
+    pending: ticket && !crewChat.stale ? `${trucks[ticket.vehicleId]}, ${ticket.quantity} crates to the ${requestNames[ticket.requestId]} via ${routeName(ticket.route)}; passed the rules check.` : null,
+    commands: history,
+    onOrder: askCrewNow,
+    onApprove: (reason) => approveRef.current(reason),
+    onSendBack: () => crewChat.clear(),
+    onWait: () => drill.setPlaying(true),
+  });
   const [provider, setProvider] = useState<ProviderInfo | null | undefined>(undefined);
   const [voice, setVoice] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(null);
@@ -117,7 +145,7 @@ export function App() {
   const camera = (id: CameraView) => { setView(id); setCameraRevision((r) => r + 1); };
 
   const action = crewChat.state?.result?.command?.actions[0];
-  const approve = () => {
+  const approve = (note?: string) => {
     const result = crewChat.state?.result;
     if (!result?.command || !action) return;
     const summary = `${trucks[action.vehicleId]} · ${action.quantity} crates → ${requestNames[action.requestId]} via ${routeName(action.route)}`;
@@ -125,11 +153,13 @@ export function App() {
     crewChat.setState((s) => s && {
       ...s,
       result: { ...result, command: null },
-      turns: [...s.turns, { id: `approved-${result.command!.id}`, from: "commander", kind: "order", text: `Approved. ${summary}.`, cites: [] }],
+      turns: [...s.turns, { id: `approved-${result.command!.id}`, from: "commander", kind: "order", text: note ? `Approved: ${note} ${summary}.` : `Approved. ${summary}.`, cites: [] }],
     });
     camera("convoy");
   };
-  const newDrill = () => { drill.reset(); crewChat.clear(); setComparing(false); camera("overview"); };
+  const approveRef = useRef(approve);
+  approveRef.current = approve;
+  const newDrill = () => { drill.reset(); crewChat.clear(); setComparing(false); setRunId((n) => n + 1); camera("overview"); };
   const switchTo = (id: "A" | "B") => { drill.switchTo(id); crewChat.clear(); };
 
   const markers: CrewMarker[] = useMemo(() => roles.map((role) => {
@@ -172,7 +202,7 @@ export function App() {
           progress={drill.progress}
           cameraView={view}
           cameraRevision={cameraRevision}
-          route={action?.route}
+          route={action?.route ?? (crewChat.state?.loading ? crewChat.state.turns.filter((t) => t.route).at(-1)?.route : undefined)}
           selected={selected}
           onSelect={setSelected}
           crew={markers}
@@ -210,6 +240,14 @@ export function App() {
             </div>
           )}
           {branchReady && <button className="go" onClick={() => setComparing(true)}><Icon name="split" size={14} /> Replay</button>}
+          <button
+            className={`autopilot ${autopilot ? "on" : ""}`}
+            onClick={() => setAutopilot(!autopilot)}
+            aria-pressed={autopilot}
+            title="Autopilot: an AI commander (Muse Spark) runs this drill through the same controls you use"
+          >
+            <Icon name="spark" size={14} /> Autopilot {autopilot ? "on" : "off"}
+          </button>
           <span
             className={`status ${provider?.live ? "live" : provider ? "scripted" : "off"}`}
             title={provider?.live ? "Every crew turn is a live Meta model call." : "Add MODEL_API_KEY to run the crew on the Meta Model API."}
@@ -263,6 +301,7 @@ export function App() {
         photo={field.photo}
         onPhoto={voice && !drill.ended ? () => { drill.setPlaying(false); setRadioOpen(true); void field.take(history); } : undefined}
         initiative={initiative}
+        pilot={autopilot ? pilot : null}
         onInitiative={() => setInitiative(!initiative)}
         open={radioOpen}
         onToggle={() => setRadioOpen(!radioOpen)}
@@ -275,13 +314,8 @@ export function App() {
           ended={drill.ended}
           stale={crewChat.stale}
           voice={voice}
-          onAsk={(order) => {
-            drill.setPlaying(false);
-            setRadioOpen(true);
-            const read = field.photo?.read;
-            void crewChat.ask(order, history, read ? { minute: field.photo!.minute, text: read.message } : undefined);
-          }}
-          onApprove={approve}
+          onAsk={askCrewNow}
+          onApprove={() => approve()}
           onDismiss={crewChat.clear}
           onReplay={branchReady ? () => setComparing(true) : null}
           onReview={voice && timeline.decisions.length ? () => setReviewing("run") : undefined}
@@ -299,7 +333,7 @@ export function App() {
         <div className="drawer-body">
           {drawer === "crew" && <CrewPanel world={world} turns={crewChat.state?.turns ?? []} />}
           {drawer === "log" && (
-            <LogPanel world={world} decisions={timeline.decisions} timeline={active} onRewind={(i) => { drill.rewind(i); crewChat.clear(); setDrawer(null); }} />
+            <LogPanel world={world} decisions={timeline.decisions} timeline={active} onRewind={(i) => { drill.rewind(i); crewChat.clear(); setDrawer(null); setRunId((n) => n + 1); }} />
           )}
         </div>
       </aside>

@@ -4,6 +4,7 @@ import { crew, roles, type CrewTurn, type Deliberation } from "@crisiscraft/crew
 import { Icon } from "../icons";
 import { mm, roleColor, who } from "../format";
 import { PhotoTurn, type PhotoState } from "./Photo";
+import type { PilotMove } from "../autopilot";
 
 export interface CrewState {
   order: string;
@@ -38,7 +39,11 @@ function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {
       <div className="turn-body">
         <div className="turn-head">
           <strong>{person.name}</strong>
-          {turn.verdict && <span className={`pill ${turn.verdict === "agree" ? "good" : "warn"}`}>{turn.verdict === "agree" ? "Agrees" : "Concern"}</span>}
+          {turn.verdict && (
+            <span className={`pill ${turn.verdict === "agree" ? "good" : "warn"}`}>
+              {turn.kind === "tool" ? (turn.verdict === "agree" ? "Passes" : "Refused") : turn.verdict === "agree" ? "Agrees" : "Concern"}
+            </span>
+          )}
           <span className={`kind kind-${turn.kind}`}>{kindLabel[turn.kind]}</span>
         </div>
         <p>{turn.text}</p>
@@ -71,7 +76,7 @@ function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {
 }
 
 /** Bottom-left radio: three crew channels with live status, and the scrolling log of the last exchange. */
-export function Radio({ world, state, photo, onPhoto, initiative, onInitiative, open, onToggle }: {
+export function Radio({ world, state, photo, onPhoto, initiative, onInitiative, pilot, open, onToggle }: {
   world: WorldState;
   state: CrewState | null;
   photo: PhotoState | null;
@@ -80,6 +85,8 @@ export function Radio({ world, state, photo, onPhoto, initiative, onInitiative, 
   /** Whether crew members radio in on their own when news reaches them. */
   initiative: boolean;
   onInitiative: () => void;
+  /** Present while Autopilot is on: its moves, so the AI commander's reasoning is on the radio too. */
+  pilot: { moves: PilotMove[]; thinking: boolean; error: string | null } | null;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -121,6 +128,19 @@ export function Radio({ world, state, photo, onPhoto, initiative, onInitiative, 
           {!state && !photo && (
             <li className="radio-empty">
               Channel quiet. Give an order below — each crew member answers from what only they know.
+            </li>
+          )}
+          {pilot && (pilot.moves.length > 0 || pilot.thinking || pilot.error) && (
+            <li className="pilot">
+              <span className="pilot-badge"><Icon name="spark" size={12} /> Autopilot</span>
+              {pilot.moves.at(-1) && (() => {
+                const m = pilot.moves.at(-1)!;
+                const label = { order: "Order", approve: "Approve", send_back: "Send back", wait: "Let the clock run" }[m.move];
+                return <p><b>min {mm(m.minute)} · {label}{m.move === "order" ? `: “${m.order}”` : ""}</b> {m.reason}{m.ms ? <small> · {(m.ms / 1000).toFixed(1)}s</small> : null}</p>;
+              })()}
+              {pilot.thinking && <p className="dots">Deciding the next move<span>.</span><span>.</span><span>.</span></p>}
+              {pilot.error && <p className="notice bad">{pilot.error}</p>}
+              {pilot.moves.length > 1 && <small className="pilot-count">{pilot.moves.length} moves this run</small>}
             </li>
           )}
           {photo && <PhotoTurn photo={photo} currentMinute={world.tick} />}

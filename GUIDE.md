@@ -122,6 +122,12 @@ Click **Review** in the replay, or **After-action review** at the end of a singl
 
 Every finding has to point to **real events** from the drill, shown as chips like `B · min 04 · North bridge closed to new traffic`. The server checks each one against what actually happened and **removes any finding that refers to something that didn't happen**. The footer says how many checked out, for example "9 of 9 match".
 
+### Autopilot: let the AI command
+
+Click **Autopilot off** in the top bar to switch it on. An AI commander (Muse Spark) now runs the drill. It sees only what you would see, and picks one move at a time (order, approve, send back, or let the clock run), with its reason in the black **Autopilot** card at the top of the radio. Then rewind and play the same moment yourself, and open **Decision replay** to compare your run with the AI's.
+
+While Priya tests routes, watch the town: the route she's dry-running lights up on the map.
+
 ### Start over
 
 Click ↻ at the top right for a new drill.
@@ -130,7 +136,7 @@ Click ↻ at the top right for a new drill.
 
 | Model | Its job in CrisisCraft |
 |---|---|
-| **Muse Spark** (`muse-spark-1.3`) | Plays the crew: three reports in parallel, each from a bounded briefing. Priya plans as an agent that calls our engine as a tool, Malik and June review her plan, and anyone can radio in on their own when news reaches them. Also reads June's photo and writes the after-action review. |
+| **Muse Spark** (`muse-spark-1.3`) | Plays the crew: three reports in parallel, each from a bounded briefing. Priya plans as an agent that calls our engine as a tool, Malik and June review her plan, anyone can radio in on their own when news reaches them, and on Autopilot it plays the commander too. Also reads June's photo and writes the after-action review. |
 | **Muse Image** (`muse-image-1.0`) | Creates June's photo of the bridge at the current water level. |
 | **SAM 3.1** (`sam-3.1`) | Outlines the bridge and the floodwater in the photo, so the share of the bridge under water can be measured. |
 | **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | Turns your spoken orders into text. |

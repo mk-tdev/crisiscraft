@@ -10,8 +10,10 @@ export interface CrewTurn {
   id: string;
   from: Role | 'commander' | 'guardrail';
   kind: 'order' | 'report' | 'alert' | 'tool' | 'plan' | 'review' | 'refused' | 'passed' | 'hold';
-  /** On review turns: whether the teammate agreed with Priya's draft. */
+  /** On review turns: whether the teammate agreed with Priya's draft; on dry runs: passed or refused. */
   verdict?: 'agree' | 'concern';
+  /** On dry-run turns: the route Priya tested, so the map can show it. */
+  route?: string[];
   text: string;
   detail?: string;
   cites: string[];
@@ -112,7 +114,11 @@ export async function deliberate(
       kind: 'plan', role: 'logistics', order, briefing: briefing(scenario, state, 'logistics'), team, refusal, reviews,
       // A revision after teammate review answers their concerns directly; the rules check below still runs.
       tools: reviews ? undefined : planTools(scenario, state),
-      onTool: call => turns.push(turn({ from: 'logistics', kind: 'tool', text: call.summary, detail: call.name, cites: [] })),
+      onTool: call => turns.push(turn({
+        from: 'logistics', kind: 'tool', text: call.summary, detail: call.name, cites: [],
+        route: call.name === 'check_plan' ? (call.args as { actions?: { route?: string[] }[] }).actions?.[0]?.route : undefined,
+        verdict: call.name === 'check_plan' ? ((call.result as { ok?: boolean }).ok ? 'agree' : 'concern') : undefined,
+      })),
     });
     const plan = p.output;
     turns.push(turn({ from: 'logistics', kind: 'plan', text: plan.message, detail: plan.rationale, cites: plan.cites, ms: p.ms, usage: p.usage, prompt: p.prompt }));
