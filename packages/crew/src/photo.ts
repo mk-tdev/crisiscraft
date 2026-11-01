@@ -8,6 +8,8 @@ import {
 } from "@crisiscraft/contracts";
 import { replay } from "@crisiscraft/sim";
 import { MAX_MINUTE, scenarioById, scenarioField } from "./scenario";
+import { postFor } from "./context";
+import { roadName } from "./roster";
 import {
   decodeMaskToRaster,
   decodeMaskToSVGPath,
@@ -372,7 +374,7 @@ async function buildFieldPhoto(
       messages: [
         {
           role: "system",
-          content: `You are ${june.name}, ${june.title} at the ${june.post}, in Harbor Point: a FICTIONAL flood drill. ${june.voice} You just took this photo of the north bridge. Judge only from the photo and the measurement. Water touching the girders or the underside of the deck makes a loaded crossing risky; water on the road surface means no. Radio the team in at most two short sentences: can a loaded supply truck cross now? Use plain names, no ids.`,
+          content: `You are ${june.name}, ${june.title} (${postFor(scenario, 'field')}), in ${scenario.name}: a FICTIONAL flood drill. ${june.voice} You just took this photo of the ${roadName(scenario, BRIDGE)}. Judge only from the photo and the measurement. Water touching the girders or the underside of the deck makes a loaded crossing risky; water on the road surface means no. Radio the team in at most two short sentences: can a loaded supply truck cross now? Use plain names, no ids.`,
         },
         {
           role: "user",

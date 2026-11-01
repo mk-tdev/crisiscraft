@@ -10,6 +10,7 @@ import { Icon, type IconName } from "./icons";
 import { Radio, type CrewState } from "./components/Radio";
 import { usePhoto } from "./components/Photo";
 import { Review } from "./components/Review";
+import { AgentsPanel, type JourneyEntry } from "./components/Agents";
 import { useAutopilot } from "./autopilot";
 import { Dispatch } from "./components/Dispatch";
 import { CrewPanel } from "./components/Crew";
@@ -18,7 +19,7 @@ import { Compare } from "./components/Compare";
 import { Briefing } from "./components/Concepts";
 import { MinuteStrip } from "./components/Timeline";
 
-type Drawer = "crew" | "log" | null;
+type Drawer = "crew" | "log" | "agents" | null;
 const cameras: { id: CameraView; label: string; icon: IconName }[] = [
   { id: "overview", label: "Town", icon: "map" },
   { id: "bridge", label: "Bridge", icon: "bridge" },
@@ -92,8 +93,26 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
   const { world, timeline, timelines, active } = drill;
   const crewChat = useCrew(world.tick, world.revision);
   const field = usePhoto(world.tick);
+  // The agents' journey this run: each finished deliberation and photo, for the Agents panel.
+  const [journey, setJourney] = useState<JourneyEntry[]>([]);
+  const finished = crewChat.state?.loading === false ? crewChat.state.result : null;
+  useEffect(() => {
+    if (!finished) return;
+    setJourney((all) => all.some((j) => j.kind === "crew" && j.deliberation === finished) ? all : [...all.slice(-39), {
+      kind: "crew", id: `crew-${Date.now()}`, t: Date.now(), minute: finished.minute, deliberation: finished,
+      initiative: finished.turns[0]?.kind === "alert",
+    }]);
+  }, [finished]);
+  const photoDone = field.photo && !field.photo.loading && field.photo.read ? field.photo : null;
+  useEffect(() => {
+    if (!photoDone) return;
+    setJourney((all) => all.some((j) => j.kind === "photo" && j.photo.image === photoDone.image) ? all : [...all.slice(-39), {
+      kind: "photo", id: `photo-${Date.now()}`, t: Date.now(), minute: photoDone.minute, photo: photoDone,
+    }]);
+  }, [photoDone]);
   const [autopilot, setAutopilot] = useState(false);
   const [runId, setRunId] = useState(0);
+  useEffect(() => setJourney([]), [runId]);
   const history = timeline.decisions.map(({ tick, command }) => ({
     tick,
     command,
@@ -465,6 +484,14 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
                   : "Scripted crew"}
           </span>
           <button
+            className={`ghost ${drawer === "agents" ? "on" : ""}`}
+            onClick={() => setDrawer(drawer === "agents" ? null : "agents")}
+            title="See the whole orchestration: pipeline, timing, every model call and the run's journey"
+          >
+            <Icon name="spark" size={15} /> Agents
+            {crewChat.state?.loading && <span className="count live-dot" aria-label="running" />}
+          </button>
+          <button
             className={`ghost ${drawer === "crew" ? "on" : ""}`}
             onClick={() => setDrawer(drawer === "crew" ? null : "crew")}
           >
@@ -617,7 +644,7 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
         onToggle={() => setRadioOpen(!radioOpen)}
       />
 
-      <div className="dispatch-dock">
+      <div className={`dispatch-dock ${drawer === "agents" ? "beside-wide" : drawer ? "beside-drawer" : ""}`}>
         <Dispatch
           key={`${runId}|${active}`}
           world={world}
@@ -638,11 +665,17 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
       </div>
 
       <aside
-        className={`drawer glass ${drawer ? "open" : ""}`}
+        className={`drawer glass ${drawer ? "open" : ""} ${drawer === "agents" ? "wide" : ""}`}
         aria-hidden={!drawer}
       >
         <div className="drawer-head">
           <div className="segmented">
+            <button
+              className={drawer === "agents" ? "on" : ""}
+              onClick={() => setDrawer("agents")}
+            >
+              Agents
+            </button>
             <button
               className={drawer === "crew" ? "on" : ""}
               onClick={() => setDrawer("crew")}
@@ -665,6 +698,15 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
           </button>
         </div>
         <div className="drawer-body">
+          {drawer === "agents" && (
+            <AgentsPanel
+              state={crewChat.state}
+              journey={journey}
+              moves={pilot.moves}
+              decisions={timeline.decisions}
+              provider={provider?.live ? provider.model : null}
+            />
+          )}
           {drawer === "crew" && (
             <CrewPanel world={world} turns={crewChat.state?.turns ?? []} />
           )}

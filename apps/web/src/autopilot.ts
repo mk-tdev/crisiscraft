@@ -7,6 +7,8 @@ export interface PilotMove extends Move {
   minute: number;
   ms: number;
   model: string | null;
+  /** Wall-clock time the move was made, to order it among the run's other agent work. */
+  at?: number;
 }
 
 /** At most this many moves per run, so a disagreement can never loop forever. */
@@ -112,7 +114,7 @@ export function useAutopilot({
               body.error ?? `Autopilot failed (${response.status}).`,
             );
           if (controller.signal.aborted) return;
-          const move = { ...body, minute };
+          const move = { ...body, minute, at: Date.now() };
           moveHistory.current = [...moveHistory.current, move];
           setMoves(moveHistory.current);
           if (move.move === "order") onOrder(move.order);

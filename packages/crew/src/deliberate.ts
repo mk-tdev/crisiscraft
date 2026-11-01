@@ -12,6 +12,8 @@ export interface CrewTurn {
   kind: 'order' | 'report' | 'alert' | 'tool' | 'plan' | 'review' | 'refused' | 'passed' | 'hold';
   /** On review turns: whether the teammate agreed with Priya's draft; on dry runs: passed or refused. */
   verdict?: 'agree' | 'concern';
+  /** Milliseconds from the start of the deliberation when this turn finished; with `ms`, gives its span. */
+  at?: number;
   /** On dry-run turns: the route Priya tested, so the map can show it. */
   route?: string[];
   text: string;
@@ -76,8 +78,9 @@ export async function deliberate(
 ): Promise<Deliberation> {
   let n = 0;
   const turns: CrewTurn[] = [];
-  const turn = (t: Omit<CrewTurn, 'id'>): CrewTurn => {
-    const full = { id: `turn-${n++}`, ...t };
+  const started = Date.now();
+  const turn = (t: Omit<CrewTurn, 'id' | 'at'>): CrewTurn => {
+    const full = { id: `turn-${n++}`, at: Date.now() - started, ...t };
     onTurn(full);
     return full;
   };
