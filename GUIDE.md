@@ -16,7 +16,10 @@ You can't practise that on a real flood. **CrisisCraft is a flight simulator for
 
 The lesson the drill teaches: **a warning only helps if it reaches the person making the plan.**
 
-## The scenario
+## The scenario (tutorial)
+
+There are two drills. Start with this short tutorial; the larger **Harbor Point Region** is described below.
+
 
 | | |
 |---|---|
@@ -27,6 +30,25 @@ The lesson the drill teaches: **a warning only helps if it reaches the person ma
 | **Rule** | Keep **one truck in reserve** at the depot at all times. You have two trucks: Rescue 01 and Rescue 02. |
 
 The drill lasts **15 minutes** of game time.
+
+## The bigger drill: Harbor Point Region
+
+Pick **Harbor Point Region** in the mission briefing (the ⓘ button reopens it). It is the same crew, rules and tools, across the whole expanded town, over **50 minutes**.
+
+| | |
+|---|---|
+| **Depot** | The **port depot** in the west: **34 crates**, **four trucks**: Rescue 01–03 (8 crates each) and Lorry 04 (12). Trucks **drive back to reload** after a delivery. |
+| **Who needs crates** | **Care home** on the low ground (8 by minute 16; residents can't be moved). **School** on the hill estate (12 by minute 30). **Village hall** across the bay (8 by minute 34). **Field hospital** by the station, which opens at minute 14 (6 by minute 46). 34 crates needed, 34 in stock. |
+| **Hazards** | The **harbour bridge** closes at **minute 12**. High tide covers the **causeway** to the village from **minute 14 to 26**, and it is the village's only road. At minute 10 a caller reports a **landslide on Station Road**: it is a **false alarm**, and June can confirm that at minute 18. |
+| **Rule** | Keep **one truck** at the depot. |
+
+Drives take 13–16 minutes. Trucks can only be in so many places, and timing matters more than speed:
+
+- **Care home:** send it **straight away over the harbour bridge** (it arrives at 15). The ring road gets there 2 minutes late, and a bridge run sent after minute 3 hits the closure.
+- **Village:** the causeway is under water from 14 to 26. The earliest any truck can arrive is minute 30, so a truck sent early just waits at the causeway head.
+- **Field hospital:** only reachable on Station Road. Believe the landslide rumour and you'll hold a truck you could have sent.
+
+A well-run drill supplies all four places on time (the engine tests prove one such sequence). June's tide table, Malik's priorities and Priya's map only come together if they reach the radio.
 
 ## The crew
 
@@ -191,7 +213,8 @@ Useful commands:
 ## Honest limits
 
 - Harbor Point is **fictional**. Nothing here is real emergency guidance.
-- There is **one scenario** and two trucks. Drills aren't saved between visits.
+- There are **two authored scenarios** (the tutorial and the region). Drills aren't saved between visits.
+- The 30-drill measurements were run on the tutorial; the region has engine tests but no live evaluation yet.
 - AI answers vary a little from run to run. The rules check and the engine are what keep outcomes trustworthy.
 - Each visitor is rate-limited so the public site can't use up the AI credits.
 

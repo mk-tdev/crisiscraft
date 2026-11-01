@@ -23,6 +23,11 @@ Nobody sees everything. Priya has the road map, but only June has seen the water
 
 ![The crew answers on the radio; Priya’s plan arrives as a dispatch ticket](docs/screenshots/crew.jpg)
 
+## Two drills
+
+- **Harbor Point** (tutorial, 15 minutes): one school, one bridge, two trucks. Learn the radio, approvals and rewind in three minutes.
+- **Harbor Point Region** (50 minutes): a care home, a hill school, a village across the bay and a field hospital, with four trucks that return to reload and 34 crates for 34 needed. The harbour bridge closes, high tide drowns the causeway for twelve minutes, and a landslide report turns out to be false. Pick it in the mission briefing.
+
 ## Try a drill in three minutes
 
 1. **Give an order.** Type something like *"Get supplies to the school, keep one truck back"*, or choose a suggestion.
@@ -108,7 +113,7 @@ The server never trusts the browser's world state. It replays the approved comma
 
 ## Honest limits
 
-Harbor Point is **fictional**. Its outcomes describe this authored scenario, not real floods, and nothing here is emergency guidance or evidence of better real-world preparedness. The drill has one scenario and two trucks, with sessions held in memory. Voice, additional scenarios and facilitator tools are next.
+Harbor Point and its region are **fictional**. Their outcomes describe these two authored scenarios, not real floods, and nothing here is emergency guidance or evidence of better real-world preparedness. Sessions are held in memory. The live 30-drill evaluation covers the tutorial; the region is covered by engine tests that play its intended solution and each trap.
 
 See [implementation status](docs/implementation-status.md), the [engine contract](docs/simulation-engine.md), the [concept](research/crisiscraft-concept.md), [contributions](docs/contributions.md) and [assets and licences](docs/assets-and-licenses.md).
 
