@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import { GROUND, type Point, rand, sites } from "./layout";
+import { GROUND, type Point, clearOfRoads, nearestTruck2, rand, sites } from "./layout";
 
 const skins = ["#f1c7a5", "#d9a27e", "#b07752", "#8a5a3b", "#e8b48f", "#6e4630"];
 const jackets = ["#2f6fe4", "#e5484d", "#e8a317", "#2f9e6b", "#7c4ddb", "#3f4a55", "#d24f0e", "#5b7fa3"];
@@ -55,17 +55,22 @@ export function Person({
   const legR = useRef<Group>(null);
   const armL = useRef<Group>(null);
   const armR = useRef<Group>(null);
-  useFrame(({ clock }) => {
+  /** Walkers keep their own clock so they can stop for a passing truck and carry on afterwards. */
+  const walked = useRef(phase);
+  useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime + phase;
     let walking = false;
     if (path && root.current) {
+      const p = root.current.position;
+      const waiting = nearestTruck2(p.x, p.z) < 1.44;
+      if (!waiting) walked.current += Math.min(delta, 0.1);
       const [a, b] = path;
       const length = Math.hypot(b[0] - a[0], b[2] - a[2]);
-      const cycle = (t * speed) / length;
+      const cycle = (walked.current * speed) / length;
       const leg = Math.floor(cycle) % 2;
       const pauseAware = Math.min(1, (cycle % 1) * 1.25);
       const u = leg === 0 ? pauseAware : 1 - pauseAware;
-      walking = (cycle % 1) < 0.8;
+      walking = !waiting && (cycle % 1) < 0.8;
       root.current.position.set(a[0] + (b[0] - a[0]) * u, a[1], a[2] + (b[2] - a[2]) * u);
       const heading = Math.atan2(b[0] - a[0], b[2] - a[2]);
       root.current.rotation.y = leg === 0 ? heading : heading + Math.PI;
@@ -169,7 +174,10 @@ export function Person({
 }
 
 /** Residents queueing at the shelters and volunteers moving supplies at the depot. */
-export function Townsfolk({ compact, schoolOpen }: { compact: boolean; schoolOpen: boolean }) {
+/** People stand beside roads, never on a truck route of either scenario. */
+const standable = (at: Point, scenarioId?: string) => clearOfRoads(at[0], at[2], 0.12, 0.12, scenarioId);
+
+export function Townsfolk({ compact, schoolOpen, scenarioId }: { compact: boolean; schoolOpen: boolean; scenarioId?: string }) {
   const school = sites.S.at;
   const east = sites.E.at;
   const depot = sites.D.at;
@@ -177,19 +185,19 @@ export function Townsfolk({ compact, schoolOpen }: { compact: boolean; schoolOpe
   return (
     <>
       {/* The school queue waits outside while power is out, then shuffles toward the door. */}
-      {Array.from({ length: queue }, (_, i) => (
+      {Array.from({ length: queue }, (_, i) => [school[0] + 0.1 + (i % 4) * 0.22 - (schoolOpen ? 0.2 : 0), GROUND, school[2] + 1.35 + Math.floor(i / 4) * 0.28 + (schoolOpen ? -0.15 : 0)] as Point).map((at, i) => standable(at, scenarioId) && (
         <Person
           key={`s${i}`}
-          at={[school[0] + 0.1 + (i % 4) * 0.22 - (schoolOpen ? 0.2 : 0), GROUND, school[2] + 1.35 + Math.floor(i / 4) * 0.28 + (schoolOpen ? -0.15 : 0)]}
+          at={at}
           facing={Math.PI + (rand(i) - 0.5) * 0.8}
           appearance={look(i + 40)}
           phase={i * 1.7}
         />
       ))}
-      {Array.from({ length: compact ? 2 : 4 }, (_, i) => (
+      {Array.from({ length: compact ? 2 : 4 }, (_, i) => [east[0] + 0.15 + i * 0.25, GROUND, east[2] - 1.25 - (i % 2) * 0.2] as Point).map((at, i) => standable(at, scenarioId) && (
         <Person
           key={`e${i}`}
-          at={[east[0] + 0.15 + i * 0.25, GROUND, east[2] - 1.25 - (i % 2) * 0.2]}
+          at={at}
           facing={(rand(i + 9) - 0.5) * 0.8}
           appearance={look(i + 70)}
           phase={i * 2.3}

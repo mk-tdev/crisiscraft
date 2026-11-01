@@ -1,9 +1,9 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { type Group, MathUtils, type MeshStandardMaterial } from "three";
 import type { WorldState } from "@crisiscraft/contracts";
 import { vehiclePosition } from "@crisiscraft/sim";
-import { isRegion, roadHeight, scenarioOf } from "./layout";
+import { FAR, isRegion, roadHeight, scenarioOf, truckSlot, truckSpots } from "./layout";
 import { signTexture } from "./text";
 
 /** Parking bays beside the depot for idle trucks; moving trucks follow the engine position. */
@@ -51,12 +51,18 @@ export function Truck({
   const vehicle = state.vehicles[id]!;
   const [x, z] = truckPosition(state, id, progress);
   const moving = vehicle.status === "travelling";
+  const onRoad = moving || vehicle.status === "returning" || vehicle.status === "stranded";
   const scenario = scenarioOf(state);
   const livery = liveries[id] ?? "#2f6fe4";
   const door = signTexture(truckName(state, id).toUpperCase(), livery, "#ffffff", 256, 64);
   // Regional distances are long, so trucks read a little larger there; the lorry is bigger still.
   const capacity = state.vehicles[id]!.capacity;
   const scale = isRegion(scenario) ? (capacity > 8 ? 1.5 : 1.25) : 1;
+  const slot = truckSlot(id);
+  useEffect(() => () => {
+    truckSpots[slot * 2] = FAR;
+    truckSpots[slot * 2 + 1] = FAR;
+  }, [slot]);
   useFrame(({ clock }, delta) => {
     const g = group.current;
     if (!g) return;
@@ -68,6 +74,10 @@ export function Truck({
     g.position.x = MathUtils.damp(g.position.x, x, 6, delta);
     g.position.z = MathUtils.damp(g.position.z, z, 6, delta);
     g.position.y = roadHeight(g.position.x, g.position.z) + 0.01;
+    // Publish where a moving truck is, so traffic pulls over and pedestrians wait for it.
+    // A parked truck stays out of the way at its bay and is not published.
+    truckSpots[slot * 2] = onRoad ? g.position.x : FAR;
+    truckSpots[slot * 2 + 1] = onRoad ? g.position.z : FAR;
     const diff = Math.atan2(Math.sin(heading.current - g.rotation.y), Math.cos(heading.current - g.rotation.y));
     g.rotation.y += diff * Math.min(delta * 5, 1);
     if (beacon.current) {

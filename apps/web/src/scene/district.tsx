@@ -15,7 +15,7 @@ import {
   PlaneGeometry,
 } from "three";
 import { useProp, useSurface, type Prop } from "./assets";
-import { CORE, GROUND, HARBOUR, type Point, RIVER, onStreet, rand, streets, waterLevel } from "./layout";
+import { CORE, GROUND, HARBOUR, type Point, RIVER, clearOfRoads, footprint, onStreet, rand, streets, waterLevel } from "./layout";
 import { Instances, type Placement, flatQuads, roofGeometry, useFacade, wallGeometry } from "./instancing";
 import { Person, look } from "./people";
 import { signTexture } from "./text";
@@ -67,7 +67,7 @@ function row(
   for (let x = x0, i = 0; x <= x1; x += step, i++) {
     const s = seed + i * 13;
     const width = 1.35 + rand(s) * 0.45;
-    if (onStreet(x, z, width / 2 + 0.35) || inCore(x, z, 0.8) || skip?.(x, z)) continue;
+    if (onStreet(x, z, width / 2 + 0.35) || inCore(x, z, 0.8) || skip?.(x, z) || !clearOfRoads(x, z, footprint(width, 1.45))) continue;
     const f = floors[Math.floor(rand(s + 1) * floors.length)]!;
     out.push({
       at: [x + (rand(s + 2) - 0.5) * 0.2, GROUND, z],
@@ -104,7 +104,7 @@ function layoutTown(compact: boolean) {
   // Harbour Street shops: three-storey fronts both sides, lit shop windows at street level.
   const shops: Building[] = [];
   const shop = (x: number, z: number, turn: number, i: number) => {
-    if (Math.abs(x - 19) < 1.45 || Math.abs(x - 29) < 1.45 || inCore(x, z, 0.5)) return;
+    if (Math.abs(x - 19) < 1.45 || Math.abs(x - 29) < 1.45 || inCore(x, z, 0.5) || !clearOfRoads(x, z, footprint(1.7, 1.5))) return;
     shops.push({ at: [x, GROUND, z], turn, floors: 3, width: 1.7, depth: 1.5, roof: "flat", color: walls[(i * 5) % walls.length] });
   };
   for (let x = 13.2, i = 0; x < 37.5; x += 1.95, i++) shop(x, -4.62, 0, i);
@@ -120,6 +120,7 @@ function layoutTown(compact: boolean) {
     [-20.8, -1.2, 4.4, 3.8],
     [-35.6, 1.6, 2.4, 3],
   ] as const) {
+    if (!clearOfRoads(x, z, footprint(w, d))) continue;
     sheds.push({ at: [x, GROUND, z], scale: [w, 1, d], color: ["#9fb0b8", "#b8a58f", "#8fa3ad", "#a9b4a2"][Math.floor(rand(x) * 4)] });
   }
   return { houses, shops, sheds };
@@ -320,6 +321,8 @@ function Containers() {
     for (let x = -16.4; x < -13.4; x += 0.98) {
       for (let z = -10.2; z < -7.4; z += 0.42) {
         const layers = 1 + Math.floor(rand(i * 7) * 3);
+        // Stacks on a truck route are left out so the yard keeps a clear lane.
+        if (!clearOfRoads(x, z, footprint(0.92, 0.38))) { i += layers; continue; }
         for (let y = 0; y < layers; y++, i++) {
           out.push({ at: [x, GROUND + y * 0.38, z], scale: [0.92, 0.37, 0.38], color: colours[Math.floor(rand(i * 3 + 1) * colours.length)] });
         }
@@ -548,8 +551,8 @@ function useTrees(compact: boolean, houses: Building[]) {
       const z = 15 + rand(i * 5 + 503) * 40;
       const h = hillHeight(x, z);
       if (h < 0.35 && rand(i * 11) > 0.15) continue;
-      if (onStreet(x, z, 0.8) || nearHouse(x, z)) continue;
       const s = 0.8 + rand(i * 7) * 0.7;
+      if (onStreet(x, z, 0.8) || nearHouse(x, z) || !clearOfRoads(x, z, 0.5 * s)) continue;
       conifers.push({ at: [x, GROUND + h - 0.08, z], scale: [s, s * (0.9 + rand(i) * 0.4), s], color: greens[Math.floor(rand(i * 13) * greens.length)] });
     }
     // Street trees and garden trees across the outer districts, plus a ring in the park.
@@ -557,8 +560,8 @@ function useTrees(compact: boolean, houses: Building[]) {
       const x = -40 + rand(i * 3 + 901) * 92;
       const z = HARBOUR + 2 + rand(i * 7 + 903) * 50;
       if (inCore(x, z, 0.6) || hillHeight(x, z) > 0.3 || onLot(x, z)) continue;
-      if (onStreet(x, z, 0.55) || nearHouse(x, z)) continue;
       const s = 0.75 + rand(i * 5) * 0.55;
+      if (onStreet(x, z, 0.55) || nearHouse(x, z) || !clearOfRoads(x, z, 0.55 * s)) continue;
       broadleaf.push({ at: [x, GROUND, z], scale: [s, s, s], color: greens[Math.floor(rand(i * 17) * greens.length)] });
     }
     return { conifers, broadleaf };
@@ -572,7 +575,8 @@ function Cars({ compact }: { compact: boolean }) {
     const out: Placement[][] = [[], []];
     let i = 0;
     const park = (x: number, z: number, turn: number) => {
-      if (inCore(x, z, 0.4)) return;
+      // Parked at the kerb only where no truck route runs; never in a gameplay lane.
+      if (inCore(x, z, 0.4) || !clearOfRoads(x, z, 0.36)) return;
       i++;
       // Parked either way round, never perfectly square to the kerb.
       const facing = turn + (rand(i * 17) > 0.5 ? Math.PI : 0) + (rand(i * 19) - 0.5) * 0.07;
@@ -621,10 +625,11 @@ function Lamps() {
     const out: Placement[] = [];
     for (let x = 13.5; x < 37; x += 3.1) out.push({ at: [x, GROUND, Math.round(x) % 2 ? -3.62 : -2.38] });
     for (let x = -36; x < 36; x += 4.2) if (x < RIVER.west - 1 || x > RIVER.east + 1) out.push({ at: [x, GROUND, HARBOUR + 1.25] });
-    for (let x = -36; x < 36; x += 5) if (!inCore(x, 13.6, 1)) out.push({ at: [x, GROUND, 12.95] });
-    for (let x = -36; x < -12; x += 4) out.push({ at: [x, GROUND, 3.55] });
+    // Kerbside poles stand back from the Ring Road and Quay Street, which double as truck routes.
+    for (let x = -36; x < 36; x += 5) if (!inCore(x, 13.6, 1)) out.push({ at: [x, GROUND, 12.72] });
+    for (let x = -36; x < -12; x += 4) out.push({ at: [x, GROUND, 3.36] });
     for (let z = 15; z < 33; z += 4.5) out.push({ at: [-24.2, GROUND, z] }, { at: [-14.2, GROUND, z] });
-    return out;
+    return out.filter((l) => clearOfRoads(l.at[0], l.at[2], 0.04, 0));
   }, []);
   const res = useMemo(
     () => ({

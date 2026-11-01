@@ -22,7 +22,7 @@ import { useSurface } from "./assets";
 import { LandBlock } from "./environment";
 import { type Building, HouseInstances, Trees, carPaint, walls } from "./district";
 import { Instances, type Placement, flatQuads, roofGeometry } from "./instancing";
-import { GROUND, HARBOUR, type Point, RAIL_Z, rand, waterLevel } from "./layout";
+import { GROUND, HARBOUR, type Point, RAIL_Z, clearOfRoads, footprint, nearestSpot, nearestTruck2, rand, waterLevel } from "./layout";
 import { BOAT_DECK, type BoatModel, boatModel, carModels } from "./models";
 import { signTexture } from "./text";
 
@@ -113,6 +113,8 @@ function Estate() {
         // Keep clear of the road's other bends, the station road and the neighbours.
         if (samples.some((q) => Math.hypot(q.x - x, q.z - z) < 1.35)) continue;
         if (Math.abs(x + 5.8) < 1.7 || houses.some((h) => Math.hypot(h.at[0] - x, h.at[2] - z) < 1.75)) continue;
+        // The truck routes to the school cross the estate; nothing is built on them.
+        if (!clearOfRoads(x, z, footprint(1.7, 1.4))) continue;
         if (rand(s + 400) > 0.88) {
           gardens.push({ at: [x, GROUND, z], scale: [0.9, 0.9, 0.9], color: greens[i % greens.length] });
           continue;
@@ -131,7 +133,7 @@ function Estate() {
           const k = 2.9 + rand(s + 406) * 0.6;
           const tx = p.x - t.z * side * k;
           const tz = p.z + t.x * side * k;
-          if (!samples.some((q) => Math.hypot(q.x - tx, q.z - tz) < 1.1)) {
+          if (!samples.some((q) => Math.hypot(q.x - tx, q.z - tz) < 1.1) && clearOfRoads(tx, tz, 0.5)) {
             const sc = 0.7 + rand(s + 407) * 0.4;
             gardens.push({ at: [tx, GROUND, tz], scale: [sc, sc, sc], color: greens[Math.floor(rand(s + 408) * greens.length)] });
           }
@@ -294,6 +296,7 @@ function Port({ tick }: { tick: number }) {
       for (let z = -8.3; z < -1.6; z += 0.47) {
         if (Math.abs(z + 5) < 0.3) continue;
         const layers = Math.floor(rand(i * 5 + 1) * 4.6);
+        if (!clearOfRoads(x, z, footprint(1.8, 0.42))) { i += layers + 1; continue; }
         for (let y = 0; y < layers; y++, i++) {
           stacks.push({ at: [x, GROUND + y * 0.43, z], scale: [1.8, 0.42, 0.42], color: colours[Math.floor(rand(i * 3 + 7) * colours.length)] });
         }
@@ -461,11 +464,11 @@ function Farmland() {
           // Hedges along the north and west edges of every field, with an occasional gap.
           if (rand(i * 11) > 0.12) hedges.push({ at: [x + w / 2, GROUND, z], scale: [w, 0.32, 0.26], color: greens[i % greens.length] });
           if (rand(i * 13) > 0.12) hedges.push({ at: [x, GROUND, z + d / 2], scale: [0.26, 0.32, d], color: greens[(i + 2) % greens.length] });
-          if (rand(i * 17) > 0.55) {
+          if (rand(i * 17) > 0.55 && clearOfRoads(x + rand(i * 23) * w, z, 0.6)) {
             const s = 0.8 + rand(i * 19) * 0.5;
             trees.push({ at: [x + rand(i * 23) * w, GROUND, z], scale: [s, s, s], color: greens[(i + 1) % greens.length] });
           }
-          if (rand(i * 29) > 0.86) {
+          if (rand(i * 29) > 0.86 && clearOfRoads(x + w * 0.3 + 0.8, z + d * 0.5, footprint(3.4, 1.6))) {
             const bx = x + w * 0.3;
             const bz = z + d * 0.5;
             const turn = rand(i * 31) > 0.5 ? 0 : Math.PI / 2;
@@ -537,6 +540,7 @@ function FarShore() {
       for (let x = -58; x < 18; x += 2.05, i++) {
         // Gaps for the ferry pier lane, the chapel, and the village hall lot used by the regional drill.
         if (Math.abs(x + 12) < 1.6 || Math.abs(x + 26) < 2.6 || (z > -48 && Math.abs(x + 17.5) < 3.2) || rand(i * 3 + 900) > 0.86) continue;
+        if (!clearOfRoads(x, z, footprint(1.7, 1.4))) continue;
         houses.push({
           at: [x + (rand(i) - 0.5) * 0.3, GROUND, z],
           turn,
@@ -700,6 +704,13 @@ function pointAt(path: Path, lengths: number[], s: number, out: [number, number]
   out[1] = az + (bz - az) * k;
 }
 
+/** Storm driving pace, in world units per second. */
+const CRUISE = 1.4;
+/** Cars within this distance of a rescue truck pull over and stop. */
+const YIELD_RADIUS = 3;
+/** How far a yielding car moves towards the kerb, clear of a truck on the road centre line. */
+const KERB = 0.58;
+
 /** Cars driving slow loops through the storm. One instanced mesh per car part, updated per frame. */
 function Traffic() {
   const models = useMemo(() => carModels(), []);
@@ -725,6 +736,32 @@ function Traffic() {
     [],
   );
   const groups = useMemo(() => [0, 1].map((m) => cars.filter((c) => c.model === m)), [cars]);
+  /**
+   * Per-car motion state, preallocated: distance along its loop, speed, sideways offset, and the
+   * car ahead on the same loop. Cars pull over for rescue trucks and never close on the car ahead.
+   */
+  const motion = useMemo(() => {
+    const all = groups.flat();
+    const ahead = new Int16Array(all.length);
+    all.forEach((car, j) => {
+      let best = -1;
+      let bestGap = Infinity;
+      const total = measure(loops[car.loop]!.path).at(-1)!;
+      all.forEach((other, k) => {
+        if (k === j || other.loop !== car.loop) return;
+        const gap = (((other.offset - car.offset) % total) + total) % total;
+        if (gap < bestGap) { bestGap = gap; best = k; }
+      });
+      ahead[j] = best;
+    });
+    return {
+      ahead,
+      dist: Float32Array.from(all, (c) => c.offset),
+      speed: new Float32Array(all.length).fill(CRUISE),
+      side: new Float32Array(all.length),
+      away: new Float32Array(all.length).fill(1),
+    };
+  }, [groups]);
   const meshes = useRef<InstancedMesh[][]>([[], []]);
   const scratch = useMemo(() => ({ o: new Object3D(), a: [0, 0] as [number, number], b: [0, 0] as [number, number], c: new Color() }), []);
   useLayoutEffect(() => {
@@ -735,22 +772,44 @@ function Traffic() {
       if (paint.instanceColor) paint.instanceColor.needsUpdate = true;
     });
   }, [groups, scratch]);
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime * 1.4;
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.1);
+    const { ahead, dist, speed, side, away } = motion;
+    let j = 0;
     groups.forEach((list, m) => {
       const parts = meshes.current[m]!;
       list.forEach((car, i) => {
         const l = loops[car.loop]!;
-        const s = t + car.offset;
+        const lens = lengths[car.loop]!;
+        const total = lens[lens.length - 1]!;
         // Heading from a point just behind to one just ahead, so cars swing round corners.
-        pointAt(l.path, lengths[car.loop]!, s - 0.3, scratch.a);
-        pointAt(l.path, lengths[car.loop]!, s + 0.3, scratch.b);
-        const x = (scratch.a[0] + scratch.b[0]) / 2;
-        const z = (scratch.a[1] + scratch.b[1]) / 2;
+        pointAt(l.path, lens, dist[j]! - 0.3, scratch.a);
+        pointAt(l.path, lens, dist[j]! + 0.3, scratch.b);
+        let x = (scratch.a[0] + scratch.b[0]) / 2;
+        let z = (scratch.a[1] + scratch.b[1]) / 2;
+        const fx = scratch.b[0] - scratch.a[0];
+        const fz = scratch.b[1] - scratch.a[1];
+        const fl = Math.hypot(fx, fz) || 1;
+        // Give way: pull to the kerb and stop while a rescue truck is close; hold a gap to the car ahead.
+        // Give way only to a truck on or crossing this car's line of travel, not one on a parallel road.
+        const d2 = nearestTruck2(x, z);
+        const across = (fz * (nearestSpot.x - x) - fx * (nearestSpot.z - z)) / fl;
+        const yielding = d2 < YIELD_RADIUS * YIELD_RADIUS && (Math.abs(across) < 1.3 || d2 < 1.7);
+        // Pull to whichever kerb is away from the truck.
+        if (yielding) away[j] = across > 0 ? -1 : 1;
+        const k = ahead[j]!;
+        const gap = k < 0 ? Infinity : (((dist[k]! - dist[j]!) % total) + total) % total;
+        const target = yielding || gap < 1.0 ? 0 : CRUISE;
+        speed[j] = speed[j]! + (target - speed[j]!) * Math.min(1, dt * 3);
+        dist[j] = dist[j]! + speed[j]! * dt;
+        side[j] = side[j]! + ((yielding ? KERB * away[j]! : 0) - side[j]!) * Math.min(1, dt * 4);
+        x += (fz / fl) * side[j]!;
+        z -= (fx / fl) * side[j]!;
         scratch.o.position.set(x, GROUND, z);
-        scratch.o.rotation.set(0, Math.atan2(scratch.b[0] - scratch.a[0], scratch.b[1] - scratch.a[1]), 0);
+        scratch.o.rotation.set(0, Math.atan2(fx, fz), 0);
         scratch.o.updateMatrix();
         for (const part of parts) part.setMatrixAt(i, scratch.o.matrix);
+        j++;
       });
       for (const part of parts) part.instanceMatrix.needsUpdate = true;
     });
@@ -937,6 +996,7 @@ function Sandbags() {
       for (let layer = 0; layer < 2; layer++) {
         for (let x = x0 + (layer ? 0.17 : 0); x < x1; x += 0.34, i++) {
           for (const z of layer ? [HARBOUR + 1.68] : [HARBOUR + 1.55, HARBOUR + 1.8]) {
+            if (!clearOfRoads(x, z, 0.17, 0.1)) continue;
             items.push({ at: [x, GROUND + 0.055 + layer * 0.1, z], turn: (rand(i * 3 + layer) - 0.5) * 0.15, scale: [0.17, 0.065, 0.11], color: colours[i % 3] });
           }
         }

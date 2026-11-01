@@ -97,10 +97,60 @@ export const roadSegments = [harborPoint, harborRegion].flatMap((s) =>
   s.edges.map((e) => ({ id: `${s.id}:${e.id}`, a: node(e.from, s), b: node(e.to, s) })),
 );
 
+/** Half-width of a gameplay road as drawn in roads.tsx (1.0 asphalt inside a 1.34 kerb). */
+export const ROAD_HALF = 0.67;
+const segmentBoxes = roadSegments.map((s) => ({
+  ...s,
+  x0: Math.min(s.a[0], s.b[0]), x1: Math.max(s.a[0], s.b[0]),
+  z0: Math.min(s.a[2], s.b[2]), z1: Math.max(s.a[2], s.b[2]),
+}));
+
+/**
+ * True when a footprint of the given radius centred at (x, z) clears every gameplay road of both
+ * scenarios (including the bridge and causeway), so trucks never drive through scenery. Called
+ * once per placement while scenery is laid out, never per frame.
+ */
+export function clearOfRoads(x: number, z: number, radius = 0, margin = 0.2, scenarioId?: string) {
+  const reach = ROAD_HALF + radius + margin;
+  for (const s of segmentBoxes) {
+    if (scenarioId && !s.id.startsWith(`${scenarioId}:`)) continue;
+    if (x < s.x0 - reach || x > s.x1 + reach || z < s.z0 - reach || z > s.z1 + reach) continue;
+    if (distanceToSegment(x, z, s.a, s.b) < reach) return false;
+  }
+  return true;
+}
+/** Footprint radius of a rectangle w × d at any rotation. */
+export const footprint = (w: number, d: number) => Math.hypot(w, d) / 2;
+
+/**
+ * Where the gameplay trucks are right now, as [x, z] pairs, written by each truck every frame and
+ * read by traffic and pedestrians so they give way. Slot = truck index; unused slots sit far away.
+ */
+export const FAR = 1e6;
+export const truckSpots = new Float32Array(16).fill(FAR);
+export const truckSlot = (id: string) => Math.max(0, Math.min(7, Number(id.replace(/\D/g, "")) - 1 || 0));
+/** Where the truck found by the last nearestTruck2 call stands (reused, never reallocated). */
+export const nearestSpot = { x: FAR, z: FAR };
+/** Distance squared from (x, z) to the nearest gameplay truck. No allocation. */
+export function nearestTruck2(x: number, z: number) {
+  let best = FAR;
+  for (let i = 0; i < 16; i += 2) {
+    const dx = truckSpots[i]! - x;
+    const dz = truckSpots[i + 1]! - z;
+    const d = dx * dx + dz * dz;
+    if (d < best) {
+      best = d;
+      nearestSpot.x = truckSpots[i]!;
+      nearestSpot.z = truckSpots[i + 1]!;
+    }
+  }
+  return best;
+}
+
 /** True when a scenery item at (x, z) would sit on a road, river, or building lot. */
 export function blocked(x: number, z: number, clearance = 1.1) {
   if (x > RIVER.west - 0.6 && x < RIVER.east + 0.6 && z < RIVER.end + 0.6) return true;
-  if (roadSegments.some((s) => distanceToSegment(x, z, s.a, s.b) < clearance)) return true;
+  if (!clearOfRoads(x, z, Math.max(0, clearance - ROAD_HALF - 0.2))) return true;
   if (onStreet(x, z, 0.5)) return true;
   return [...Object.values(sites), ...Object.values(regionSites)].some((s) => Math.abs(x - s.at[0]) < 2.8 && Math.abs(z - s.at[2]) < 2.6);
 }

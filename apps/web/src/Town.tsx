@@ -165,7 +165,7 @@ function Scene({
       <Roads scenario={scenario} />
       <BridgeClosure closed={bridgeClosed} warning={bridgeWarning} />
       {route.length > 1 && <RouteGlow route={route} roads={state.roads} scenario={scenario} />}
-      <Neighbourhood compact={compact} />
+      <Neighbourhood compact={compact} scenarioId={scenario.id} />
       <OuterTown tick={flood} compact={compact} />
       {!compact && <Outskirts tick={flood} />}
       {region ? (
@@ -183,7 +183,7 @@ function Scene({
           <EastShelter delivered={east?.delivered ?? 0} />
         </>
       )}
-      <Townsfolk compact={compact} schoolOpen={schoolPowered} />
+      <Townsfolk compact={compact} schoolOpen={schoolPowered} scenarioId={scenario.id} />
       {crew.map((member) => (
         <Person
           key={member.role}

@@ -2,7 +2,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { MeshStandardMaterial } from "three";
 import { type Prop, type Surface, useProp, useSurface } from "./assets";
-import { CORE, GROUND, type Point, RIVER, blocked, rand, sites } from "./layout";
+import { CORE, GROUND, type Point, RIVER, blocked, clearOfRoads, footprint, rand, sites } from "./layout";
 import { signTexture } from "./text";
 
 function Gable({ width, depth, height, rise, surface, tint }: { width: number; depth: number; height: number; rise: number; surface: Surface; tint: string }) {
@@ -334,7 +334,9 @@ const houseRows: { at: Point; turn: number; floors: number }[] = [
 const tints = ["#efe6d4", "#e7d6c4", "#d8e1e2", "#e9d9b7", "#dfe6d6", "#f1ddd2"];
 
 /** Neighbourhood dressing: houses, trees, shrubs, lamps and benches placed off the road graph. */
-export function Neighbourhood({ compact }: { compact: boolean }) {
+export function Neighbourhood({ compact, scenarioId }: { compact: boolean; scenarioId?: string }) {
+  // The core's hand-placed houses and lamps stand clear of the roads of the drill being played.
+  const houses = useMemo(() => houseRows.map((h, i) => ({ ...h, i })).filter((h) => clearOfRoads(h.at[0], h.at[2], footprint(1.5, 1.2), 0.15, scenarioId)), [scenarioId]);
   const trees = useMemo(() => {
     const result: { at: Point; scale: number; seed: number }[] = [];
     // Inside the playable core only; the outer districts plant their own instanced trees.
@@ -360,8 +362,8 @@ export function Neighbourhood({ compact }: { compact: boolean }) {
   ];
   return (
     <>
-      {houseRows.map((h, i) => (
-        <House key={i} at={h.at} turn={h.turn} floors={h.floors} tint={tints[i % tints.length]!} seed={i} />
+      {houses.map((h) => (
+        <House key={h.i} at={h.at} turn={h.turn} floors={h.floors} tint={tints[h.i % tints.length]!} seed={h.i} />
       ))}
       {trees.map((t) => (
         <Tree key={t.seed} at={t.at} scale={t.scale} seed={t.seed} />
@@ -376,10 +378,10 @@ export function Neighbourhood({ compact }: { compact: boolean }) {
           [2.8, 9.4],
           [10.6, 5.6],
           [-0.4, 9.1],
-        ].map(([x, z], i) => (
+        ].filter(([x, z]) => clearOfRoads(x!, z!, 0.3, 0.1, scenarioId)).map(([x, z], i) => (
           <PropAt key={i} name={i % 2 ? "shrub_03" : "shrub_sorrel_01"} height={0.32 + (i % 3) * 0.06} at={[x!, GROUND, z!]} turn={i} />
         ))}
-      {lamps.map((at, i) => (
+      {lamps.filter((at) => clearOfRoads(at[0], at[2], 0.04, 0, scenarioId)).map((at, i) => (
         <PropAt key={i} name="street_lamp_02" height={1.25} at={at} turn={i * 0.9} />
       ))}
       {!compact && (
