@@ -8,15 +8,17 @@ import { Outskirts } from "./scene/outskirts";
 import { CameraRig, type CameraView } from "./scene/camera";
 import { Sky, Terrain } from "./scene/environment";
 import { CrewChip, PlaceChip, type Tone } from "./scene/labels";
-import { GROUND, type Point, crewSpots, sites } from "./scene/layout";
+import { GROUND, type Point, crewSpotsFor, floodClock, isRegion, regionSites, scenarioOf, sites } from "./scene/layout";
+import { RegionLandmarks } from "./scene/region";
 import { Person, Townsfolk, look } from "./scene/people";
 import { BridgeClosure, RouteGlow, Roads } from "./scene/roads";
-import { Truck, truckPosition } from "./scene/vehicles";
+import { Truck, truckName, truckPosition } from "./scene/vehicles";
 import { Floodwater } from "./scene/water";
 import { Lightning, Rain } from "./scene/weather";
 
 export type { CameraView } from "./scene/camera";
-export type Selection = "D" | "S" | "E" | "JS" | "V1" | "V2";
+/** A place or truck id from the active scenario (e.g. "D", "JS", "V1"; in the region also "C", "XV", "V4"). */
+export type Selection = string;
 export type CrewRole = "logistics" | "shelter" | "field";
 export interface CrewMarker {
   role: CrewRole;
@@ -61,15 +63,62 @@ function Scene({
   compact = false,
   root,
 }: TownProps & { root: HTMLDivElement | null }) {
+  const scenario = scenarioOf(state);
+  const region = isRegion(scenario);
+  const spots = crewSpotsFor(scenario);
+  const flood = floodClock(scenario, state.tick + progress);
   const bridgeClosed = state.roads.JS === false;
-  const schoolPowered = Boolean(state.receiving.S);
+  const schoolPowered = region ? true : Boolean(state.receiving.S);
   const school = state.requests.school;
   const east = state.requests.east;
+  const vehicleIds = scenario.vehicles.map((v) => v.id);
   const showTruck = (id: string) => {
     const v = state.vehicles[id]!;
-    return v.status !== "idle" || v.cargo > 0 || v.node !== "D";
+    return v.status !== "idle" || v.cargo > 0 || v.node !== scenario.depot;
   };
-  const placeChips: { id: Selection; at: Point; name: string; detail: string; tone: Tone }[] = [
+  const bridgeWarning = region ? state.tick >= 6 : state.tick >= 1;
+  const placeChips: { id: Selection; at: Point; name: string; detail: string; tone: Tone }[] = region
+    ? [
+        {
+          id: "P",
+          at: [regionSites.P.at[0] - 0.6, 2.5, regionSites.P.at[2] - 0.6],
+          name: "Port depot",
+          detail: `${state.stock} crates on hand`,
+          tone: state.stock > 0 ? "ok" : "idle",
+        },
+        ...([["C", "care", "Care home"], ["S", "school", "School shelter"], ["V", "village", "Village hall"], ["H", "hospital", "Field hospital"]] as const).map(
+          ([id, requestId, name]) => {
+            const r = state.requests[requestId];
+            const site = regionSites[id];
+            return {
+              id,
+              at: [site.at[0], 2.1, site.at[2]] as Point,
+              name,
+              detail: !r
+                ? "No request yet"
+                : r.completedTick != null
+                  ? `Supplied · min ${String(r.completedTick).padStart(2, "0")}`
+                  : `${r.delivered}/${r.quantity} crates · due min ${String(r.dueTick).padStart(2, "0")}`,
+              tone: (!r ? "idle" : r.completedTick != null ? "ok" : state.tick > r.dueTick ? "alert" : "warn") as Tone,
+            };
+          },
+        ),
+        {
+          id: "JS",
+          at: [0.5, 1.45, -3],
+          name: "Harbour bridge",
+          detail: bridgeClosed ? "Closed · flooded" : bridgeWarning ? "Open · flood risk" : "Open",
+          tone: bridgeClosed ? "alert" : bridgeWarning ? "warn" : "ok",
+        },
+        {
+          id: "XV",
+          at: [-17.5, 1.3, -27],
+          name: "Causeway",
+          detail: state.roads.XV === false ? "Under the tide · closed" : "Open · tidal",
+          tone: state.roads.XV === false ? "alert" : "ok",
+        },
+      ]
+    : [
     {
       id: "D",
       at: [sites.D.at[0] - 0.6, 2.5, sites.D.at[2] - 0.6],
@@ -112,28 +161,40 @@ function Scene({
       <Sky shadows={!compact} />
       {weather && <Lightning />}
       <Terrain />
-      <Floodwater tick={state.tick + progress} bridgeClosed={bridgeClosed} />
-      <Roads />
-      <BridgeClosure closed={bridgeClosed} warning={state.tick >= 1} />
-      {route.length > 1 && <RouteGlow route={route} roads={state.roads} />}
+      <Floodwater tick={flood} bridgeClosed={bridgeClosed} />
+      <Roads scenario={scenario} />
+      <BridgeClosure closed={bridgeClosed} warning={bridgeWarning} />
+      {route.length > 1 && <RouteGlow route={route} roads={state.roads} scenario={scenario} />}
       <Neighbourhood compact={compact} />
-      <OuterTown tick={state.tick + progress} compact={compact} />
-      {!compact && <Outskirts tick={state.tick + progress} />}
-      <Depot stock={state.stock} />
-      <SchoolShelter powered={schoolPowered} delivered={school?.delivered ?? 0} />
-      <EastShelter delivered={east?.delivered ?? 0} />
+      <OuterTown tick={flood} compact={compact} />
+      {!compact && <Outskirts tick={flood} />}
+      {region ? (
+        <>
+          {/* The tutorial's landmarks stay as ordinary town buildings in the region. */}
+          <Depot stock={0} sign="QUAY STORE" />
+          <SchoolShelter powered delivered={0} sign="TOWN HALL ANNEX" colour="#52525b" />
+          <EastShelter delivered={0} sign="COMMUNITY HALL" colour="#52525b" />
+          <RegionLandmarks state={state} floodTick={flood} />
+        </>
+      ) : (
+        <>
+          <Depot stock={state.stock} />
+          <SchoolShelter powered={schoolPowered} delivered={school?.delivered ?? 0} />
+          <EastShelter delivered={east?.delivered ?? 0} />
+        </>
+      )}
       <Townsfolk compact={compact} schoolOpen={schoolPowered} />
       {crew.map((member) => (
         <Person
           key={member.role}
-          at={crewSpots[member.role]}
+          at={spots[member.role]}
           facing={crewFacing[member.role]}
           appearance={crewLook[member.role]}
           active={member.status === "speaking"}
           phase={member.role.length}
         />
       ))}
-      {(["V1", "V2"] as const).map((id) => (
+      {vehicleIds.map((id) => (
         <Truck
           key={id}
           state={state}
@@ -159,7 +220,7 @@ function Scene({
               onSelect={onSelect ? () => onSelect(chip.id) : undefined}
             />
           ))}
-          {(["V1", "V2"] as const).filter(showTruck).map((id) => {
+          {vehicleIds.filter(showTruck).map((id) => {
             const v = state.vehicles[id]!;
             return (
               <PlaceChip
@@ -169,16 +230,16 @@ function Scene({
                   const [x, z] = truckPosition(state, id, progress);
                   return [x, 1.05, z];
                 }}
-                name={id === "V1" ? "Rescue 01" : "Rescue 02"}
+                name={truckName(state, id)}
                 detail={`${v.status}${v.cargo ? ` · ${v.cargo} crates` : ""}`}
-                tone={v.status === "stranded" ? "alert" : v.status === "travelling" ? "warn" : "ok"}
+                tone={v.status === "stranded" ? "alert" : v.status === "travelling" || v.status === "returning" ? "warn" : "ok"}
                 selected={selected === id}
                 onSelect={onSelect ? () => onSelect(id) : undefined}
               />
             );
           })}
           {!compact && crew.map((member) => {
-            const spot = crewSpots[member.role];
+            const spot = spots[member.role];
             return (
               <CrewChip
                 key={member.role}

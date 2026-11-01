@@ -2,18 +2,26 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { type Group, MathUtils, type MeshStandardMaterial } from "three";
 import type { WorldState } from "@crisiscraft/contracts";
-import { harborPoint, vehiclePosition } from "@crisiscraft/sim";
-import { roadHeight } from "./layout";
+import { vehiclePosition } from "@crisiscraft/sim";
+import { isRegion, roadHeight, scenarioOf } from "./layout";
 import { signTexture } from "./text";
 
 /** Parking bays beside the depot for idle trucks; moving trucks follow the engine position. */
 const parking: Record<string, [number, number]> = { V1: [-6.3, 5.0], V2: [-7.7, 5.0] };
+/** In the region the trucks wait in a row on the port apron, beside the depot shed. */
+const regionParking: Record<string, [number, number]> = { V1: [-60.4, 2.0], V2: [-61.8, 2.0], V3: [-63.2, 2.0], V4: [-64.9, 2.0] };
 
 export function truckPosition(state: WorldState, id: string, progress: number): [number, number] {
+  const scenario = scenarioOf(state);
   const v = state.vehicles[id]!;
-  if (v.status === "idle" && v.node === harborPoint.depot && !v.leg) return parking[id] ?? [0, 0];
-  return vehiclePosition(harborPoint, v, state.tick + (v.leg ? progress : 0));
+  if (v.status === "idle" && v.node === scenario.depot && !v.leg) return (isRegion(scenario) ? regionParking : parking)[id] ?? [0, 0];
+  return vehiclePosition(scenario, v, state.tick + (v.leg ? progress : 0));
 }
+
+const liveries: Record<string, string> = { V1: "#f2611d", V2: "#2f6fe4", V3: "#2f9e6b", V4: "#e8a317" };
+/** The truck's radio name from the scenario, e.g. "Rescue 01" or "Lorry 04". */
+export const truckName = (state: WorldState, id: string) =>
+  scenarioOf(state).vehicles.find((v) => v.id === id)?.label ?? (id === "V1" ? "Rescue 01" : id === "V2" ? "Rescue 02" : id);
 
 function Wheel({ at }: { at: [number, number, number] }) {
   return (
@@ -43,14 +51,18 @@ export function Truck({
   const vehicle = state.vehicles[id]!;
   const [x, z] = truckPosition(state, id, progress);
   const moving = vehicle.status === "travelling";
-  const livery = id === "V1" ? "#f2611d" : "#2f6fe4";
-  const door = signTexture(id === "V1" ? "RESCUE 01" : "RESCUE 02", livery, "#ffffff", 256, 64);
+  const scenario = scenarioOf(state);
+  const livery = liveries[id] ?? "#2f6fe4";
+  const door = signTexture(truckName(state, id).toUpperCase(), livery, "#ffffff", 256, 64);
+  // Regional distances are long, so trucks read a little larger there; the lorry is bigger still.
+  const capacity = state.vehicles[id]!.capacity;
+  const scale = isRegion(scenario) ? (capacity > 8 ? 1.5 : 1.25) : 1;
   useFrame(({ clock }, delta) => {
     const g = group.current;
     if (!g) return;
     if (vehicle.leg) {
-      const from = harborPoint.nodes.find((n) => n.id === vehicle.leg!.from)!;
-      const to = harborPoint.nodes.find((n) => n.id === vehicle.leg!.to)!;
+      const from = scenario.nodes.find((n) => n.id === vehicle.leg!.from)!;
+      const to = scenario.nodes.find((n) => n.id === vehicle.leg!.to)!;
       heading.current = Math.atan2(to.x - from.x, to.z - from.z);
     }
     g.position.x = MathUtils.damp(g.position.x, x, 6, delta);
@@ -68,6 +80,7 @@ export function Truck({
       ref={group}
       position={[x, roadHeight(x, z), z]}
       rotation={[0, Math.PI / 2, 0]}
+      scale={scale}
       onClick={(event) => {
         event.stopPropagation();
         onSelect?.();

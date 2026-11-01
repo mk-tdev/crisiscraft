@@ -9,6 +9,7 @@ import {
   RepeatWrapping,
   type Texture,
 } from "three";
+import type { Scenario } from "@crisiscraft/contracts";
 import { harborPoint } from "@crisiscraft/sim";
 import { useProp, useSurface } from "./assets";
 import { BRIDGE, BRIDGE_DECK, GROUND, RIVER, node, type Point, roadHeight } from "./layout";
@@ -96,7 +97,7 @@ function Segment({ a, b, asphalt, kerb, dashes }: { a: Point; b: Point; asphalt:
 }
 
 /** Asphalt network for every scenario edge, junction pads, and the north bridge structure. */
-export function Roads() {
+export function Roads({ scenario = harborPoint }: { scenario?: Scenario }) {
   const asphaltSet = useSurface("asphalt_02", 1, 1);
   const kerbSet = useSurface("brushed_concrete", 1, 1);
   const asphalt = useMemo(() => [asphaltSet.map, asphaltSet.normalMap, asphaltSet.roughnessMap!], [asphaltSet]);
@@ -104,10 +105,10 @@ export function Roads() {
   const dashes = useMemo(() => dashTexture(), []);
   return (
     <>
-      {harborPoint.edges.map((e) => (
-        <Segment key={e.id} a={node(e.from)} b={node(e.to)} asphalt={asphalt} kerb={kerb} dashes={dashes} />
+      {scenario.edges.map((e) => (
+        <Segment key={e.id} a={node(e.from, scenario)} b={node(e.to, scenario)} asphalt={asphalt} kerb={kerb} dashes={dashes} />
       ))}
-      {harborPoint.nodes.map((n) => (
+      {scenario.nodes.map((n) => (
         <group key={n.id} position={[n.x, GROUND, n.z]}>
           <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
             <circleGeometry args={[0.8, 28]} />
@@ -176,10 +177,10 @@ function Beacon({ phase }: { phase: number }) {
   );
 }
 
-function Barrier({ at }: { at: Point }) {
+export function Barrier({ at, turn = Math.PI / 2 }: { at: Point; turn?: number }) {
   const block = useProp("concrete_road_barrier_02", 0.2);
   return (
-    <group position={at} rotation={[0, Math.PI / 2, 0]}>
+    <group position={at} rotation={[0, turn, 0]}>
       <primitive object={block} />
       <group position={[0, 0.25, 0]}>
         <Beacon phase={at[0] + at[2]} />
@@ -229,7 +230,7 @@ export function BridgeClosure({ closed, warning }: { closed: boolean; warning: b
 }
 
 /** Glowing chevrons scroll along the proposed route; closed legs turn coral. */
-export function RouteGlow({ route, roads }: { route: string[]; roads: Record<string, boolean> }) {
+export function RouteGlow({ route, roads, scenario = harborPoint }: { route: string[]; roads: Record<string, boolean>; scenario?: Scenario }) {
   const chevrons = useMemo(() => {
     const t = chevronTexture().clone();
     t.wrapS = t.wrapT = RepeatWrapping;
@@ -241,10 +242,10 @@ export function RouteGlow({ route, roads }: { route: string[]; roads: Record<str
     () =>
       route.slice(1).map((to, i) => {
         const from = route[i]!;
-        const edge = harborPoint.edges.find((e) => (e.from === from && e.to === to) || (e.to === from && e.from === to));
-        return { key: `${from}-${to}`, edgeId: edge?.id ?? "", geometry: ribbon(node(from), node(to), 0.42, 0.035) };
+        const edge = scenario.edges.find((e) => (e.from === from && e.to === to) || (e.to === from && e.from === to));
+        return { key: `${from}-${to}`, edgeId: edge?.id ?? "", geometry: ribbon(node(from, scenario), node(to, scenario), 0.42, 0.035) };
       }),
-    [route],
+    [route, scenario],
   );
   const meshes = useRef<Mesh[]>([]);
   useFrame(({ clock }) => {

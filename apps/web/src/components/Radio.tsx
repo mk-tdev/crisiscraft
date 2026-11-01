@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Role, WorldState } from "@crisiscraft/contracts";
-import { crew, roles, type CrewTurn, type Deliberation } from "@crisiscraft/crew";
+import { crew, postFor, roles, type CrewTurn, type Deliberation } from "@crisiscraft/crew";
 import { Icon } from "../icons";
-import { mm, roleColor, who } from "../format";
+import { mm, roleColor, scenario, who } from "../format";
 import { PhotoTurn, type PhotoState } from "./Photo";
 import type { PilotMove } from "../autopilot";
 
@@ -110,7 +110,7 @@ export function Radio({ world, state, photo, onPhoto, initiative, onInitiative, 
           {roles.map((r) => (
             <span key={r} className={`channel ${status(r)}`} style={{ ["--role" as string]: roleColor[r] }} title={`${crew[r].name}, ${crew[r].title}`}>
               <Avatar from={r} size={24} />
-              <span><b>{crew[r].name}</b><small>{crew[r].post}</small></span>
+              <span><b>{crew[r].name}</b><small>{postFor(scenario(), r)}</small></span>
             </span>
           ))}
         </div>

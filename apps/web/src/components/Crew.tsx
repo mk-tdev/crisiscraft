@@ -1,7 +1,7 @@
 import type { WorldState } from "@crisiscraft/contracts";
-import { crew, roles, type CrewTurn } from "@crisiscraft/crew";
+import { crew, postFor, roles, type CrewTurn } from "@crisiscraft/crew";
 import { roleContext } from "@crisiscraft/sim";
-import { mm, roleColor } from "../format";
+import { mm, roleColor, scenario } from "../format";
 import { Avatar } from "./Radio";
 
 /** "What each person knows": the same bounded projection the model receives. */
@@ -21,7 +21,7 @@ export function CrewPanel({ world, turns }: { world: WorldState; turns: CrewTurn
               <Avatar from={role} size={38} />
               <div>
                 <strong>{m.name}</strong>
-                <span>{m.title} · {m.post}</span>
+                <span>{m.title} · {postFor(scenario(), role)}</span>
               </div>
             </header>
             <p className="remit">{m.remit}</p>

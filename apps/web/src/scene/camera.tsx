@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Fog, PerspectiveCamera, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { WorldState } from "@crisiscraft/contracts";
+import { isRegion, regionSites, scenarioOf } from "./layout";
 import { truckPosition } from "./vehicles";
 
 export type CameraView = "overview" | "bridge" | "school" | "convoy";
@@ -10,6 +11,8 @@ export type CameraView = "overview" | "bridge" | "school" | "convoy";
 /** A low, cinematic three-quarter angle from the south-east (about 25° above the horizon). */
 const direction = new Vector3(0.5, 0.45, 0.86).normalize();
 const closeDirection = new Vector3(0.52, 0.56, 0.8).normalize();
+/** The region runs north–south (village to station), so its overview looks from the east and lays it across the wide screen. */
+const regionDirection = new Vector3(0.86, 0.78, 0.12).normalize();
 
 /**
  * Full-bleed layout: floating UI covers the top bar and the bottom command strip, so the
@@ -43,7 +46,7 @@ export function CameraRig({
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.08;
     orbit.minDistance = 4;
-    orbit.maxDistance = 150;
+    orbit.maxDistance = 170;
     orbit.minPolarAngle = 0.2;
     orbit.maxPolarAngle = 1.36;
     orbit.zoomSpeed = 0.85;
@@ -74,12 +77,23 @@ export function CameraRig({
     if (transitioning.current || view === "convoy") {
       let distance = compact ? 12 : 15.5;
       let from = closeDirection;
+      const scenario = scenarioOf(state);
+      const region = isRegion(scenario);
       if (view === "bridge") target.set(0.5, 0, -3.2);
-      else if (view === "school") target.set(6.6, 0, -4.2);
-      else if (view === "convoy") {
-        const [x, z] = truckPosition(state, "V1", progress);
+      else if (view === "school") {
+        if (region) target.set(regionSites.S.at[0], 0, regionSites.S.at[2] - 1);
+        else target.set(6.6, 0, -4.2);
+      } else if (view === "convoy") {
+        // Follow the truck on the road; in the region that is whichever one is moving.
+        const moving = Object.values(state.vehicles).find((v) => v.status === "travelling");
+        const [x, z] = truckPosition(state, moving?.id ?? "V1", progress);
         target.set(x, 0, z);
-        distance = compact ? 10 : 12.5;
+        distance = compact ? 10 : region ? 16 : 12.5;
+      } else if (region) {
+        // The whole network: port in the west, care home in the east, village across the bay to the hospital.
+        target.set(-9, 0, 8.5);
+        distance = (compact ? 136 : 128) * Math.max(1, 1.55 / aspect);
+        from = regionDirection;
       } else if (compact) {
         target.set(0.3, 0, 0.4);
         distance = 33 * Math.max(1, 1.6 / aspect);

@@ -139,10 +139,12 @@ function Sign({ text, background, color, at, width = 1.2 }: { text: string; back
   );
 }
 
-export function Depot({ stock }: { stock: number }) {
+type Site = { at: Point; turn: number };
+
+export function Depot({ stock, site = sites.D, sign = "SUPPLY DEPOT" }: { stock: number; site?: Site; sign?: string }) {
   const iron = useSurface("corrugated_iron", 3, 1);
   const apron = useSurface("brushed_concrete", 2, 2);
-  const { at, turn } = sites.D;
+  const { at, turn } = site;
   return (
     <group position={at} rotation={[0, turn, 0]}>
       <mesh position={[0.3, 0.012, 0.4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -158,9 +160,9 @@ export function Depot({ stock }: { stock: number }) {
         <boxGeometry args={[1.3, 0.92, 0.03]} />
         <meshStandardMaterial {...iron} color="#cdd3d6" metalness={0.4} roughness={0.5} />
       </mesh>
-      <Sign text="SUPPLY DEPOT" background="#18181b" at={[0.8, 1.02, 0.62]} width={1.1} />
+      <Sign text={sign} background="#18181b" at={[0.8, 1.02, 0.62]} width={1.1} />
       {/* The engine's depot stock, one crate each. */}
-      <CrateStack count={stock} at={[1.15, 0.01, 1.3]} cols={3} rows={2} />
+      <CrateStack count={stock} at={[1.15, 0.01, 1.3]} cols={stock > 12 ? 5 : 3} rows={stock > 12 ? 4 : 2} />
       <PropAt name="Barrel_01" height={0.24} at={[-1.55, 0, 0.9]} />
       <PropAt name="Barrel_01" height={0.24} at={[-1.3, 0, 1.05]} turn={1.2} />
       <PropAt name="medical_box" height={0.1} at={[-1.0, 0, 1.3]} turn={0.3} />
@@ -191,9 +193,11 @@ function Generator({ powered }: { powered: boolean }) {
   );
 }
 
-export function SchoolShelter({ powered, delivered }: { powered: boolean; delivered: number }) {
+export function SchoolShelter({
+  powered, delivered, site = sites.S, sign = "SCHOOL SHELTER", colour = "#2f6fe4",
+}: { powered: boolean; delivered: number; site?: Site; sign?: string; colour?: string }) {
   const brick = useSurface("brick_wall_001", 2.5, 1.2);
-  const { at, turn } = sites.S;
+  const { at, turn } = site;
   return (
     <group position={at} rotation={[0, turn, 0]}>
       <mesh position={[0, 0.7, 0]} castShadow receiveShadow>
@@ -211,16 +215,18 @@ export function SchoolShelter({ powered, delivered }: { powered: boolean; delive
         <boxGeometry args={[0.5, 0.5, 0.03]} />
         <meshStandardMaterial color={powered ? "#f6d9a0" : "#3a4246"} emissive={powered ? "#ffc66b" : "#000000"} emissiveIntensity={powered ? 0.8 : 0} />
       </mesh>
-      <Sign text="SCHOOL SHELTER" background="#2f6fe4" at={[0, 1.66, 0.6]} width={1.4} />
+      <Sign text={sign} background={colour} at={[0, 1.66, 0.6]} width={1.4} />
       <Generator powered={powered} />
       <CrateStack count={delivered} at={[-1.1, 0, 1.45]} cols={3} rows={2} />
     </group>
   );
 }
 
-export function EastShelter({ delivered }: { delivered: number }) {
+export function EastShelter({
+  delivered, site = sites.E, sign = "EAST SHELTER", colour = "#2f9e6b",
+}: { delivered: number; site?: Site; sign?: string; colour?: string }) {
   const walls = useSurface("painted_plaster_wall", 2, 1);
-  const { at, turn } = sites.E;
+  const { at, turn } = site;
   return (
     <group position={at} rotation={[0, turn, 0]}>
       <mesh position={[0, 0.55, 0]} castShadow receiveShadow>
@@ -233,7 +239,7 @@ export function EastShelter({ delivered }: { delivered: number }) {
         <boxGeometry args={[0.46, 0.52, 0.03]} />
         <meshStandardMaterial color="#f3dfb5" emissive="#ffc66b" emissiveIntensity={0.6} />
       </mesh>
-      <Sign text="EAST SHELTER" background="#2f9e6b" at={[0, 1.32, 0.95]} width={1.2} />
+      <Sign text={sign} background={colour} at={[0, 1.32, 0.95]} width={1.2} />
       <CrateStack count={delivered} at={[1.05, 0, 1.35]} cols={3} rows={2} />
     </group>
   );

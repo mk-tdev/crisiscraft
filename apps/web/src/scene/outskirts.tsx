@@ -535,7 +535,8 @@ function FarShore() {
     let i = 0;
     for (const [z, turn] of [[-46.4, 0], [-49.6, Math.PI]] as const) {
       for (let x = -58; x < 18; x += 2.05, i++) {
-        if (Math.abs(x + 12) < 1.6 || Math.abs(x + 26) < 2.6 || rand(i * 3 + 900) > 0.86) continue;
+        // Gaps for the ferry pier lane, the chapel, and the village hall lot used by the regional drill.
+        if (Math.abs(x + 12) < 1.6 || Math.abs(x + 26) < 2.6 || (z > -48 && Math.abs(x + 17.5) < 3.2) || rand(i * 3 + 900) > 0.86) continue;
         houses.push({
           at: [x + (rand(i) - 0.5) * 0.3, GROUND, z],
           turn,
