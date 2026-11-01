@@ -33,7 +33,9 @@ Crew and photo workflows share a maximum **50-second total model budget**, below
 - Real localhost HTTP stand-ins complete role reports or image generation, then stall planning/SAM. Both server workflows emit terminal timeout errors; partial client streams fail clearly. No live model credits are used by these tests.
 - `node scripts/build-vercel.mjs` verifies production packaging for all five functions.
 
-The latest reliability changes have automated local verification. A fresh hosted, logged-out browser smoke test is still required; historical screenshots and earlier browser checks are not proof of the latest deployment.
+Hosted API smoke checks on production code commit `167fb75` passed on 1 November: a real crew deliberation finished in 19.6 seconds with the hill route (`D → H → S`), and a real photo workflow finished image → segments → read in 20.2 seconds. Both returned terminal success, below the 50-second budget. No credentials were sent by the test client; the deployed server used its configured model key.
+
+These checks establish the live API paths for those two runs. A complete logged-out browser rehearsal, including microphone permission, takeover/reset and branch controls, is still required; historical screenshots are not proof of that final rehearsal.
 
 ## Remaining submission steps
 

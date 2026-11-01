@@ -46,7 +46,7 @@ Run from a logged-out browser against the final URL, not just Vite. Confirm the 
 - [ ] Check a phone viewport and a desktop with WebGL. Confirm basic controls remain usable if the 3D scene fails.
 - [ ] Open the repo and video while logged out. Confirm track, roster, contribution attribution and form completion.
 
-A passing local failure test or successful function bundle does not substitute for these hosted checks. Use https://crisiscraft.vercel.app for judges. Vercel deployment-specific and main-branch preview URLs redirect unauthenticated visitors to login; those are not the submission link. The production alias served commit `7c589a4` when its HTML and provider status were checked on 1 November. Record the deployed fix commit and full workflow smoke results after release.
+A passing local failure test or successful function bundle does not substitute for these hosted checks. Use https://crisiscraft.vercel.app for judges. Vercel deployment-specific and main-branch preview URLs redirect unauthenticated visitors to login; those are not the submission link. The fix deployment for code commit `167fb75` reached READY on 1 November. Unauthenticated live API smoke checks then completed the crew workflow in 19.6 seconds (hill route `D → H → S`) and all three photo stages in 20.2 seconds, both with terminal success under the 50-second budget. These two API runs are verified; the complete browser/microphone/takeover checklist above remains pending.
 
 ## Three-minute video
 
