@@ -12,6 +12,8 @@ const requestSchema = z.object({
   commands: z.array(z.object({ tick: z.number().int().min(0), command: commandSchema }).strict()).max(20),
   /** June's latest field-photo reading, produced by /api/photo earlier in this run. */
   photo: z.object({ minute: z.number().int().min(0), text: z.string().trim().min(1).max(320) }).strict().optional(),
+  /** A crew member radioing in unprompted about a report that just reached them. */
+  initiative: z.object({ role: z.enum(['logistics', 'shelter', 'field']), observationId: z.string().max(40) }).strict().optional(),
 }).strict();
 
 type Env = Record<string, string | undefined>;
@@ -29,7 +31,7 @@ export function crewStatus(env: Env) {
 export async function handleCrew(input: unknown, env: Env, onTurn?: (turn: CrewTurn) => void): Promise<HandlerResult> {
   const parsed = requestSchema.safeParse(input);
   if (!parsed.success) return { status: 400, body: { error: 'Order must be 2–400 characters with a valid run history.' } };
-  const { minute, order, commands, photo } = parsed.data;
+  const { minute, order, commands, photo, initiative } = parsed.data;
   let state;
   try {
     state = replay(harborPoint, commands, minute);
@@ -39,7 +41,7 @@ export async function handleCrew(input: unknown, env: Env, onTurn?: (turn: CrewT
   }
   try {
     const earlier = photo && photo.minute <= minute ? [{ from: 'field' as const, text: `Photo from the north bridge at minute ${photo.minute}: ${photo.text}`, cites: [] }] : [];
-    return { status: 200, body: await deliberate(harborPoint, state, order, chooseProvider(env), onTurn, earlier) };
+    return { status: 200, body: await deliberate(harborPoint, state, order, chooseProvider(env), onTurn, earlier, { initiative }) };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The crew could not respond.';
     return { status: 502, body: { error: `The crew could not respond: ${message}` } };

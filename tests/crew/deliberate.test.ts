@@ -32,7 +32,7 @@ describe('scripted crew', () => {
     expect(result.provider.live).toBe(false);
     expect(result.command?.actions[0]).toMatchObject({ vehicleId: 'V1', requestId: 'school', quantity: 6, route: ['D', 'H', 'S'] });
     expect(result.turns.map(t => `${t.from}:${t.kind}`)).toEqual([
-      'commander:order', 'logistics:report', 'shelter:report', 'field:report', 'logistics:tool', 'logistics:plan', 'guardrail:passed',
+      'commander:order', 'logistics:report', 'shelter:report', 'field:report', 'logistics:tool', 'logistics:plan', 'shelter:review', 'field:review', 'guardrail:passed',
     ]);
   });
 
@@ -86,5 +86,29 @@ describe('crew handler', () => {
     } }] }, {});
     expect(stale.status).toBe(409);
     expect((await handleCrew({ minute: 2, order: '', commands: [] }, {})).status).toBe(400);
+  });
+});
+
+describe('crew initiative and peer review', () => {
+  it('lets June radio in unprompted when the closure reaches her, then Priya proposes a response', async () => {
+    const result = await deliberate(harborPoint, at(4), 'June radioed in.', scriptedProvider, () => {}, [], { initiative: { role: 'field', observationId: 'closure-4' } });
+    expect(result.turns[0]).toMatchObject({ from: 'field', kind: 'alert' });
+    expect(result.turns[0]!.text).toContain('closed');
+    expect(result.turns.some(t => t.from === 'commander')).toBe(false);
+    expect(result.turns.some(t => t.kind === 'plan')).toBe(true);
+  });
+
+  it('ignores an initiative for a report that has not reached that role', async () => {
+    const result = await deliberate(harborPoint, at(2), 'Status?', scriptedProvider, () => {}, [], { initiative: { role: 'field', observationId: 'closure-4' } });
+    expect(result.turns[0]).toMatchObject({ from: 'commander', kind: 'order' });
+  });
+
+  it('has teammates review a passing plan, and gives Priya one revision when June objects to the bridge', async () => {
+    const result = await deliberate(harborPoint, at(2), 'Send the school crates over the bridge.', scriptedProvider);
+    const reviews = result.turns.filter(t => t.kind === 'review');
+    expect(reviews.find(t => t.from === 'field')).toMatchObject({ verdict: 'concern' });
+    expect(result.turns.filter(t => t.kind === 'plan')).toHaveLength(2);
+    expect(result.turns.filter(t => t.kind === 'plan').at(-1)!.text).toContain('concern');
+    expect(result.command?.actions[0]!.route).toEqual(['D', 'J', 'S']);
   });
 });

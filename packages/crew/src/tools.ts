@@ -62,6 +62,10 @@ export function routeRoads(scenario: Scenario, route: string[]) {
   });
 }
 
+export function routeMinutes(scenario: Scenario, route: string[]) {
+  return route.slice(1).reduce((sum, node, i) => sum + (edgeBetween(scenario, route[i]!, node)?.minutes ?? 0), 0);
+}
+
 /** Every simple path from the depot, shortest first. The map has six roads, so this stays tiny. */
 export function mapRoutes(scenario: Scenario, destination: string) {
   const out: { route: string[]; roads: string[]; minutes: number }[] = [];

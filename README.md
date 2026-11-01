@@ -52,19 +52,21 @@ Every turn on the radio is a separate call to the **Meta Model API** (`muse-spar
 - **Spoken orders** go through **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`). Click the mic, speak, click again: the browser records a 24 kHz WAV, the server forwards it to `/v1/asr/transcribe` in push-to-talk mode, with the crew's names and the town's roads as vocabulary hints, and the transcript becomes your order.
 - **Priya plans as a tool-using agent.** Her planning turn runs a Chat Completions tool loop with three functions served by our engine: `list_routes` (her paper map only, no live road status), `check_plan` (the rules validator, dry run) and `submit_plan`. Each call shows on the radio as it happens, so you can watch her test the bridge, get refused, and reroute or hold.
 - **A verifiable after-action review.** At the end of a drill, or in decision replay, **Muse Spark** reads both runs' engine logs and what each crew member knew at each order, then writes the debrief. Every finding must cite event ids; the server checks each one against the replayed runs and removes any finding that cites an event that never happened, and the review says how many it removed.
+- **Teammates review the plan.** When Priya's plan passes the rules, Malik and June each check it against what *they* know, in parallel, and answer *agree* or *concern* on the radio. One concern earns Priya a revision, where she changes the plan or answers the concern out loud; a route the commander named still wins.
+- **The crew speaks up on its own.** When the engine delivers a new report to a crew member mid-drill (the bridge closing, the east shelter calling, the school's power returning), the clock pauses and that person radios in unprompted. Priya answers with what should change, ready for approval. Toggle it with **Auto** on the radio.
 - **A guardrail loop** dry-runs that plan in the deterministic engine. If the plan is refused, the reason goes back to the model for one revision. Two refusals mean nothing happens, and the crew says so.
 
 ### Does bounded knowledge actually matter? We measured it
 
 Thirty live Muse Spark drills from the same moment (minute 2: bridge still open, June has seen the water rising, the bridge closes at minute 4):
 
-| Condition | Took the hill road | School supplied on time | Plan cites June's warning |
-| --- | --- | --- | --- |
-| Full radio, "get six crates to the school" | **10 of 10** | **10 of 10** | 10 of 10 |
-| Same order, **June kept off the radio** | 0 of 10 | **0 of 10** | 0 of 10 |
-| Full radio, "bridge is fastest, go that way" | 0 of 10 (followed the order) | 0 of 10 | **10 of 10 warned you** |
+| Condition | Took the hill road | School supplied on time | Plan cites June's warning | June objected in review |
+| --- | --- | --- | --- | --- |
+| Full radio, "get six crates to the school" | **10 of 10** | **10 of 10** | 10 of 10 | 0 of 10 (no false alarms) |
+| Same order, **June kept off the radio** | 0 of 10 | **0 of 10** | 1 of 10 | silenced |
+| Full radio, "bridge is fastest, go that way" | 0 of 10 (followed the order) | 0 of 10 | **10 of 10 warned you** | **10 of 10** |
 
-The planner never sees the true road state. When the one person who saw the water is silenced, every plan sends the truck into the closure. When the commander insists on the bridge, the crew complies and says the warning out loud. Every plan passed the rules check on the first try. Details and raw runs: [docs/eval/crew-eval.md](docs/eval/crew-eval.md); reproduce with `npm run eval:crew`.
+The planner never sees the true road state. When the one person who saw the water is silenced, every plan sends the truck into the closure. When the commander insists on the bridge, June objects in review every time, and the crew complies while saying the warning out loud. She never objected to the safe hill road. Every plan passed the rules check on the first try. Details and raw runs: [docs/eval/crew-eval.md](docs/eval/crew-eval.md); reproduce with `npm run eval:crew`.
 
 Turns stream to the browser as they arrive. Each turn shows its latency, token count and the exact briefing the model received. Muse Spark Open on Baseten works through the same OpenAI-compatible interface by changing `MODEL_BASE_URL` and `MODEL_NAME`.
 

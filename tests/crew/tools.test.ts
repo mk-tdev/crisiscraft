@@ -38,7 +38,8 @@ describe("Priya's planning tools", () => {
     ];
     const fetch = vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
-      return body.tools ? queue.shift()! : report.clone();
+      if (body.tools) return queue.shift()!;
+      return body.response_format.json_schema.name === 'review' ? reply({ content: JSON.stringify({ verdict: 'agree', message: 'Hill road works.', cites: [] }) }) : report.clone();
     });
     vi.stubGlobal('fetch', fetch);
     const result = await deliberate(harborPoint, at(5), 'Get the crates to the school.', metaProvider({ MODEL_API_KEY: 'k' }));
@@ -46,7 +47,7 @@ describe("Priya's planning tools", () => {
     expect(result.turns.find(t => t.kind === 'tool' && t.text.includes('refused'))).toBeTruthy();
     expect(result.command?.actions[0]!.route).toEqual(['D', 'H', 'S']);
     // Each tool result went back to the model under its call id.
-    const last = JSON.parse(String((fetch.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body));
+    const last = (fetch.mock.calls as unknown as [string, RequestInit][]).map(([, init]) => JSON.parse(String(init.body))).filter(b => b.tools).at(-1);
     expect(last.messages.filter((m: { role: string }) => m.role === 'tool').map((m: { tool_call_id: string }) => m.tool_call_id)).toEqual(['a', 'b', 'c']);
     expect(last.tool_choice).toBe('auto');
   });

@@ -82,7 +82,12 @@ Over about 10 seconds:
    - reading her map (`list_routes`);
    - testing a plan against the rules (`check_plan`), which comes back "passes" or "refused" with a reason.
 3. **Priya proposes a plan**, explaining which teammate's report changed it.
-4. **Rules check:** our code checks the plan again for stock, truck capacity, closed roads and the reserve rule. A model can't get a bad plan past this.
+4. **Teammates review the plan.** Malik and June each check Priya's draft against what *they* know and answer **Agrees** or **Concern**. If either has a concern, Priya revises once, or keeps the plan and answers the concern out loud.
+5. **Rules check:** our code checks the plan again for stock, truck capacity, closed roads and the reserve rule. A model can't get a bad plan past this.
+
+### 4½. The crew speaks up by itself
+
+While the clock runs, news reaches the crew: the **bridge closes at minute 4**, the **east shelter calls at minute 5**, and the **school's power returns at minute 6**. When a report lands, the clock **pauses**, and the person who received it radios in **unprompted** (marked **Radioed in**). Priya then proposes what should change, without waiting for your order. Turn this off with the **Auto** toggle on the radio.
 
 ### 5. Approve
 
@@ -125,7 +130,7 @@ Click ↻ at the top right for a new drill.
 
 | Model | Its job in CrisisCraft |
 |---|---|
-| **Muse Spark** (`muse-spark-1.3`) | Plays the crew: three reports in parallel, each from a bounded briefing. Priya plans as an agent that calls our engine as a tool. Also reads June's photo and writes the after-action review. |
+| **Muse Spark** (`muse-spark-1.3`) | Plays the crew: three reports in parallel, each from a bounded briefing. Priya plans as an agent that calls our engine as a tool, Malik and June review her plan, and anyone can radio in on their own when news reaches them. Also reads June's photo and writes the after-action review. |
 | **Muse Image** (`muse-image-1.0`) | Creates June's photo of the bridge at the current water level. |
 | **SAM 3.1** (`sam-3.1`) | Outlines the bridge and the floodwater in the photo, so the share of the bridge under water can be measured. |
 | **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | Turns your spoken orders into text. |
@@ -136,11 +141,11 @@ Click ↻ at the top right for a new drill.
 
 We ran **30 live drills** from the same moment (minute 2), with three conditions:
 
-| Condition | Took the safe hill road | School supplied on time | Plan mentions June's warning |
-|---|---|---|---|
-| Full radio, "get six crates to the school" | **10 of 10** | **10 of 10** | 10 of 10 |
-| Same order, **June kept off the radio** | 0 of 10 | **0 of 10** | 0 of 10 |
-| Full radio, "bridge is fastest, go that way" | 0 of 10 (followed your order) | 0 of 10 | **10 of 10 warned you** |
+| Condition | Took the safe hill road | School supplied on time | Plan mentions June's warning | June objected in review |
+|---|---|---|---|---|
+| Full radio, "get six crates to the school" | **10 of 10** | **10 of 10** | 10 of 10 | 0 of 10 |
+| Same order, **June kept off the radio** | 0 of 10 | **0 of 10** | 1 of 10 | silenced |
+| Full radio, "bridge is fastest, go that way" | 0 of 10 (followed your order) | 0 of 10 | **10 of 10 warned you** | **10 of 10** |
 
 Take one person's report away and the crew drives into the flood every time. Details are in [docs/eval/crew-eval.md](docs/eval/crew-eval.md).
 

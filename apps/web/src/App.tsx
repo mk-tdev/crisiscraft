@@ -29,13 +29,14 @@ const BRIEFED = "crisiscraft:briefed";
 function useCrew(minute: number, revision: number) {
   const [state, setState] = useState<CrewState | null>(null);
   const abort = useRef<AbortController | null>(null);
-  const ask = useCallback(async (order: string, commands: Parameters<typeof askCrew>[0]["commands"], photo?: Parameters<typeof askCrew>[0]["photo"]) => {
+  type Body = Parameters<typeof askCrew>[0];
+  const ask = useCallback(async (order: string, commands: Body["commands"], photo?: Body["photo"], initiative?: Body["initiative"]) => {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
     setState({ order, turns: [], result: null, error: null, loading: true });
     try {
-      const result = await askCrew({ minute, order, commands, photo }, (turn: CrewTurn) =>
+      const result = await askCrew({ minute, order, commands, photo, initiative }, (turn: CrewTurn) =>
         setState((s) => (s ? { ...s, turns: [...s.turns, turn] } : s)), controller.signal);
       setState((s) => (s ? { ...s, turns: result.turns, result, loading: false } : s));
     } catch (error) {
@@ -68,6 +69,28 @@ export function App() {
     if (photoMinute !== undefined && photoMinute > world.tick) clearPhoto();
   }, [photoMinute, world.tick, clearPhoto]);
   useEffect(() => clearPhoto(), [active, timeline.decisions.length, clearPhoto]);
+
+  // Crew initiative: when a new report reaches a crew member, the clock pauses and they radio in
+  // unprompted; Priya answers with what should change. Each report triggers once per timeline.
+  const heard = useRef(new Set<string>());
+  const [initiative, setInitiative] = useState(true);
+  const crewAsk = crewChat.ask;
+  const pause = drill.setPlaying;
+  useEffect(() => {
+    for (const key of [...heard.current]) if (Number(key.split("|")[2]) > world.tick) heard.current.delete(key);
+    if (!initiative || drill.ended || world.tick < 1 || crewChat.state?.loading) return;
+    const news = world.observations
+      .filter((o) => o.receivedTick === world.tick)
+      .flatMap((o) => roles.filter((r) => o.audience.includes(r)).map((role) => ({ o, role })))
+      .sort((a, b) => roles.indexOf(b.role) - roles.indexOf(a.role))
+      .find(({ o }) => !heard.current.has(`${active}|${o.id}|${o.receivedTick}`));
+    if (!news) return;
+    heard.current.add(`${active}|${news.o.id}|${news.o.receivedTick}`);
+    pause(false);
+    setRadioOpen(true);
+    void crewAsk(`${crew[news.role].name} radioed in at minute ${mm(world.tick)}`, history, undefined, { role: news.role, observationId: news.o.id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [world.tick, active, initiative]);
   const [provider, setProvider] = useState<ProviderInfo | null | undefined>(undefined);
   const [voice, setVoice] = useState(false);
   const [drawer, setDrawer] = useState<Drawer>(null);
@@ -239,6 +262,8 @@ export function App() {
         state={crewChat.state}
         photo={field.photo}
         onPhoto={voice && !drill.ended ? () => { drill.setPlaying(false); setRadioOpen(true); void field.take(history); } : undefined}
+        initiative={initiative}
+        onInitiative={() => setInitiative(!initiative)}
         open={radioOpen}
         onToggle={() => setRadioOpen(!radioOpen)}
       />

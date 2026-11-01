@@ -23,7 +23,7 @@ export function Avatar({ from, size = 30 }: { from: CrewTurn["from"]; size?: num
 }
 
 const kindLabel: Record<CrewTurn["kind"], string> = {
-  order: "Order", report: "Report", tool: "Tool", plan: "Plan", refused: "Refused", passed: "Checked", hold: "Hold",
+  order: "Order", report: "Report", alert: "Radioed in", tool: "Tool", plan: "Plan", review: "Review", refused: "Refused", passed: "Checked", hold: "Hold",
 };
 
 function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {
@@ -38,6 +38,7 @@ function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {
       <div className="turn-body">
         <div className="turn-head">
           <strong>{person.name}</strong>
+          {turn.verdict && <span className={`pill ${turn.verdict === "agree" ? "good" : "warn"}`}>{turn.verdict === "agree" ? "Agrees" : "Concern"}</span>}
           <span className={`kind kind-${turn.kind}`}>{kindLabel[turn.kind]}</span>
         </div>
         <p>{turn.text}</p>
@@ -70,12 +71,15 @@ function Turn({ turn, world }: { turn: CrewTurn; world: WorldState }) {
 }
 
 /** Bottom-left radio: three crew channels with live status, and the scrolling log of the last exchange. */
-export function Radio({ world, state, photo, onPhoto, open, onToggle }: {
+export function Radio({ world, state, photo, onPhoto, initiative, onInitiative, open, onToggle }: {
   world: WorldState;
   state: CrewState | null;
   photo: PhotoState | null;
   /** Present when a live key can run June's photo pipeline. */
   onPhoto?: () => void;
+  /** Whether crew members radio in on their own when news reaches them. */
+  initiative: boolean;
+  onInitiative: () => void;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -89,7 +93,12 @@ export function Radio({ world, state, photo, onPhoto, open, onToggle }: {
   return (
     <section className={`radio glass ${open ? "open" : ""}`} aria-label="Crew radio">
       <header className="radio-head">
-        <span className="radio-title"><i className={state?.loading ? "live" : ""} /> Crew radio</span>
+        <span className="radio-title">
+          <i className={state?.loading ? "live" : ""} /> Crew radio
+          <button className={`initiative ${initiative ? "on" : ""}`} onClick={onInitiative} aria-pressed={initiative} title="When on, crew members radio in by themselves as soon as news reaches them">
+            Auto {initiative ? "on" : "off"}
+          </button>
+        </span>
         <div className="channels">
           {roles.map((r) => (
             <span key={r} className={`channel ${status(r)}`} style={{ ["--role" as string]: roleColor[r] }} title={`${crew[r].name}, ${crew[r].title}`}>

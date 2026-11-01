@@ -27,7 +27,7 @@ export async function crewStatus(): Promise<CrewStatus | null> {
 
 /** Streams each crew turn as it arrives, then resolves with the full deliberation. */
 export async function askCrew(
-  body: { minute: number; order: string; commands: { tick: number; command: ApprovedCommand }[]; photo?: { minute: number; text: string } },
+  body: { minute: number; order: string; commands: { tick: number; command: ApprovedCommand }[]; photo?: { minute: number; text: string }; initiative?: { role: "logistics" | "shelter" | "field"; observationId: string } },
   onTurn: (turn: CrewTurn) => void,
   signal?: AbortSignal,
 ): Promise<Deliberation> {

@@ -2,17 +2,24 @@ import type { Role } from '@crisiscraft/contracts';
 import { harborPoint, shortestOpenRoute } from '@crisiscraft/sim';
 import type { Briefing } from './context';
 import { crew, truckNames } from './roster';
-import { jsonSchemas, planSchema, reportSchema, type Plan, type Report } from './schemas';
+import { jsonSchemas, planSchema, reportSchema, reviewSchema, type Plan, type Report, type Review } from './schemas';
 import { toolDefinitions, type PlanTools, type ToolCall } from './tools';
 
 export interface TeamMessage { from: Role; text: string; cites: string[] }
 
 export type CrewTask =
-  | { kind: 'report'; role: Role; order: string; briefing: Briefing }
+  | {
+    kind: 'report'; role: Role; order: string; briefing: Briefing;
+    /** Set when this crew member is radioing in unprompted about a report that just reached them. */
+    news?: { id: string; fact: string };
+  }
+  | { kind: 'review'; role: Role; order: string; briefing: Briefing; proposal: string }
   | {
     kind: 'plan'; role: 'logistics'; order: string; briefing: Briefing; team: TeamMessage[]; refusal?: string;
     /** Engine-backed tools the planner may call before submitting; each call is reported as it happens. */
     tools?: PlanTools; onTool?: (call: ToolCall) => void;
+    /** Teammates' reviews of the previous draft, when at least one raised a concern. */
+    reviews?: { from: Role; verdict: Review['verdict']; text: string }[];
   };
 
 export interface Usage { inputTokens: number; outputTokens: number }
@@ -25,6 +32,7 @@ export interface CrewProvider {
   live: boolean;
   report(task: Extract<CrewTask, { kind: 'report' }>): Promise<TurnResult<Report>>;
   plan(task: Extract<CrewTask, { kind: 'plan' }>): Promise<TurnResult<Plan>>;
+  review(task: Extract<CrewTask, { kind: 'review' }>): Promise<TurnResult<Review>>;
 }
 
 export function prompts(task: CrewTask) {
@@ -37,8 +45,12 @@ export function prompts(task: CrewTask) {
     'Other crew members cannot see your briefing. If you know something the team needs, say it plainly.',
     'Speak like a person on a radio: use names (Rescue 01, the north bridge, the hill road, the school shelter), never ids such as V1, JS, D-H-S or bridge-0. Ids belong only in cites and plan actions.',
     task.kind === 'report'
-      ? 'Reply on the team radio in at most two short sentences, then list the observation ids you used.'
-      : [
+      ? (task.news
+        ? 'A new report just reached you and nobody asked yet. Radio it to the team unprompted in at most two short sentences: what happened and what it changes. Then list the observation ids you used.'
+        : 'Reply on the team radio in at most two short sentences, then list the observation ids you used.')
+      : task.kind === 'review'
+        ? 'Priya has drafted a dispatch plan. Check it against YOUR briefing only. Say "concern" only if something you know makes it unsafe, late or impossible; otherwise "agree". One or two radio sentences, then the observation ids you used.'
+        : [
         'You must propose the dispatch plan the commander will approve or reject.',
         'A code validator enforces: the truck must be idle at the depot; quantity <= truck capacity, depot stock and remaining unassigned demand;',
         'the route must start at the depot, end at the request destination and follow roads in your road map; a road already closed is refused;',
@@ -49,13 +61,17 @@ export function prompts(task: CrewTask) {
         'In rationale, name the teammate report or observation id that shaped the route.',
         ...(task.tools ? ['You have tools. Use list_routes to read your map, check_plan to dry-run a plan against the validator, then submit_plan exactly once.',
           'Check a plan before you submit it; if the check refuses it, fix it or hold.'] : []),
+        ...(task.reviews ? ['Your teammates reviewed your last draft. Revise if a concern is valid, or keep the plan and answer the concern in your message. A route the commander named still wins.'] : []),
       ].join(' '),
   ].join('\n');
   const user = JSON.stringify({
     commanderOrder: task.order,
+    ...(task.kind === 'report' && task.news ? { justReceived: task.news } : {}),
+    ...(task.kind === 'review' ? { priyasDraftPlan: task.proposal } : {}),
     briefing: task.briefing,
     ...(task.kind === 'plan' ? { teamRadio: task.team.map(m => ({ from: `${crew[m.from].name} (${crew[m.from].title})`, said: m.text })) } : {}),
     ...(task.kind === 'plan' && task.refusal ? { validatorRefusedYourLastPlan: task.refusal, instruction: 'Revise the plan so it passes, or hold.' } : {}),
+    ...(task.kind === 'plan' && task.reviews ? { teammateReviewsOfYourDraft: task.reviews.map(r => ({ from: crew[r.from].name, verdict: r.verdict, said: r.text })) } : {}),
   }, null, 1);
   return { system, user };
 }
@@ -65,7 +81,7 @@ export function metaProvider(env: Record<string, string | undefined>): CrewProvi
   const key = env.MODEL_API_KEY!;
   const base = (env.MODEL_BASE_URL || 'https://api.meta.ai/v1').replace(/\/$/, '');
   const model = env.MODEL_NAME || 'muse-spark-1.3';
-  async function call<T>(task: CrewTask, name: 'report' | 'plan', parse: (v: unknown) => T): Promise<TurnResult<T>> {
+  async function call<T>(task: CrewTask, name: 'report' | 'plan' | 'review', parse: (v: unknown) => T): Promise<TurnResult<T>> {
     const prompt = prompts(task);
     const started = Date.now();
     const response = await fetch(`${base}/chat/completions`, {
@@ -151,6 +167,7 @@ export function metaProvider(env: Record<string, string | undefined>): CrewProvi
     id: 'meta', label: 'Meta Model API', model, live: true,
     report: task => call(task, 'report', v => reportSchema.parse(v)),
     plan: task => (task.tools ? agent(task, task.tools) : call(task, 'plan', v => planSchema.parse(v))),
+    review: task => call(task, 'review', v => reviewSchema.parse(v)),
   };
 }
 
@@ -217,9 +234,26 @@ export const scriptedProvider: CrewProvider = {
         cites: warned && !viaBridge ? ['risk-1'] : ['bridge-0'],
       };
     }
+    if (task.reviews?.some(r => r.verdict === 'concern') && output.actions.length) {
+      const who = task.reviews.filter(r => r.verdict === 'concern').map(r => crew[r.from].name).join(' and ');
+      output = { ...output, message: `${output.message} ${who} raised a concern; I've kept the plan — your call.` };
+    }
     if (task.tools && output.actions.length) {
       const { call } = task.tools.call('check_plan', { actions: output.actions });
       if (call) task.onTool?.(call);
+    }
+    return { output, usage: null, ms: 0, prompt: prompts(task) };
+  },
+  async review(task) {
+    const b = task.briefing;
+    const p = task.proposal.toLowerCase();
+    let output: Review = { verdict: 'agree', message: 'Works for me.', cites: [] };
+    if (task.role === 'field' && p.includes('north bridge') && (has(b, 'risk-1') || has(b, 'closure-4'))) {
+      output = { verdict: 'concern', message: 'That route crosses the north bridge and the water there is rising. I would not send a loaded truck over it.', cites: ['risk-1'].filter(id => has(b, id)) };
+    }
+    const arrive = Number(/minute (\d+)/.exec(p)?.[1] ?? NaN);
+    if (task.role === 'shelter' && p.includes('school') && !has(b, 'power-6') && arrive < 6) {
+      output = { verdict: 'concern', message: `Arriving around minute ${arrive} is before our power returns at minute 6 — the truck would wait at the gate.`, cites: ['school-0'] };
     }
     return { output, usage: null, ms: 0, prompt: prompts(task) };
   },

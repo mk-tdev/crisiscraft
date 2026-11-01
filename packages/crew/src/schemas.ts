@@ -20,7 +20,15 @@ export const planSchema = z.object({
 }).strict();
 export type Plan = z.infer<typeof planSchema>;
 
+export const reviewSchema = z.object({
+  verdict: z.enum(['agree', 'concern']).describe('concern only if something in your own briefing makes the plan unsafe, late or impossible.'),
+  message: z.string().min(1).max(280).describe('What you say on the radio about the plan: one or two sentences.'),
+  cites: z.array(z.string().max(40)).max(6),
+}).strict();
+export type Review = z.infer<typeof reviewSchema>;
+
 export const jsonSchemas = {
   report: z.toJSONSchema(reportSchema),
   plan: z.toJSONSchema(planSchema),
+  review: z.toJSONSchema(reviewSchema),
 };
