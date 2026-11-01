@@ -41,7 +41,7 @@ Normal flows had no unexpected JavaScript errors. SwiftShader emitted GPU readba
 
 `npm run check`: **90 passing tests**, strict TypeScript checking and production build. Five new voice lifecycle tests cover cancelled recordings, delayed permission, delayed transcription, callback freshness and recording setup failure. The production function bundle was also built successfully. The CSS correction passed a subsequent production build/typecheck.
 
-Screenshots: [desktop replay](screenshots/production-rehearsal-replay.png), [phone replay](screenshots/production-rehearsal-mobile.png). The final phone check followed a fresh production reload and loaded `/assets/index-DhFrpGVo.css`; deadline/end/review controls all fit within 390 × 844, with the expected minute-8/minute-11 outcomes. Detailed local captures and CLI snapshots are under the ignored `output/playwright/rehearsal/` directory; synthetic audio and large request traces are not published.
+The desktop screenshot was captured on `496f246` before viewport resizing; the immediate post-resize capture had a headless compositor artifact and is not used. Screenshots: [desktop replay](screenshots/production-rehearsal-replay.png), [phone replay](screenshots/production-rehearsal-mobile.png). The final phone check followed a fresh production reload and loaded `/assets/index-DhFrpGVo.css`; deadline/end/review controls all fit within 390 × 844, with the expected minute-8/minute-11 outcomes. Detailed local captures and CLI snapshots are under the ignored `output/playwright/rehearsal/` directory; synthetic audio and large request traces are not published.
 
 ## Remaining human release steps
 
