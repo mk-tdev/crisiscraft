@@ -88,7 +88,7 @@ npm run dev
 Open **http://127.0.0.1:5173**. The crew API runs inside the dev server at `/api/crew`, the same handler that ships as the Vercel function.
 
 ```sh
-npm run check             # 85 engine, crew, workflow and UI regression tests + strict typecheck + production build
+npm run check             # 90 engine, crew, workflow and UI regression tests + strict typecheck + production build
 npm run meta:check        # one live Muse Spark call and one Voice Transcribe call with your key
 npm run build:vercel      # static app + five bundled API functions in .vercel/output
 ```
@@ -116,6 +116,6 @@ Built during the Meta Global AI Developer Hackathon, October–November 2026.
 
 ## Submission readiness (1 November 2026)
 
-The [public repository](https://github.com/mk-tdev/crisiscraft) and [recorded live crew evaluation](docs/eval/crew-eval.md) are available. The production app is [crisiscraft.vercel.app](https://crisiscraft.vercel.app), verified accessible without login. The final hosted workflow smoke test, three-minute video, track and full team roster are still to be confirmed in the [submission plan](docs/submission-plan.md). [Contributions](docs/contributions.md) identify the event-built work and third-party components.
+The [public repository](https://github.com/mk-tdev/crisiscraft) and [recorded live crew evaluation](docs/eval/crew-eval.md) are available. The production app is [crisiscraft.vercel.app](https://crisiscraft.vercel.app), verified accessible without login. The [production browser rehearsal](docs/production-browser-rehearsal.md) covers voice, live Autopilot approval/takeover/reset, photo, debrief, branch replay, phone layout and WebGL fallback. The three-minute video, track and full team roster are still to be confirmed in the [submission plan](docs/submission-plan.md). [Contributions](docs/contributions.md) identify the event-built work and third-party components.
 
 Autopilot requests are cancelled on takeover or timeline changes. Crew/photo model workflows have a 50-second total budget under the configured 60-second function limit; timeouts return an explicit retry message and never approve a plan. The photo percentage is image-mask overlap, not flood depth or validated road safety. Run the deployed smoke checklist before recording; local tests do not establish hosted reliability.

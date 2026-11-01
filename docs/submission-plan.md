@@ -12,11 +12,11 @@ The project fits **Build for Your World**: a fictional coordination rehearsal fo
 
 | Requirement | Current evidence / remaining action |
 | --- | --- |
-| Meta integration | Implemented Muse Spark crew/tool planning/review, optional AI commander, Voice Transcribe and generated Image → SAM → Spark flow. Thirty recorded live crew runs are in [eval](eval/crew-eval.md); other paths need a final hosted smoke test. |
+| Meta integration | Implemented Muse Spark crew/tool planning/review, optional AI commander, Voice Transcribe and generated Image → SAM → Spark flow. Thirty recorded live crew runs are in [eval](eval/crew-eval.md); the [browser rehearsal](production-browser-rehearsal.md) additionally covers voice, photo, review and Autopilot. |
 | Public repository | Complete: [mk-tdev/crisiscraft](https://github.com/mk-tdev/crisiscraft), default `main`. |
 | New work clearly identified | [Contributions](contributions.md) now covers 28 October–1 November, including original code and third-party boundaries. Add each actual team member's contribution before submitting. |
 | Rights | CC0 scene assets and dependencies recorded in [assets and licenses](assets-and-licenses.md). Generated imagery is explicitly synthetic. |
-| Working judge-facing deployment | [crisiscraft.vercel.app](https://crisiscraft.vercel.app): unauthenticated HTML and `/api/crew` GET verified on 1 November; status reports live Meta and voice enabled. The latest fixes still require the hosted workflow checklist below. |
+| Working judge-facing deployment | [crisiscraft.vercel.app](https://crisiscraft.vercel.app): unauthenticated HTML and `/api/crew` GET verified on 1 November; status reports live Meta and voice enabled. The [production browser rehearsal](production-browser-rehearsal.md) passed the main application workflows; remaining checks are listed below. |
 | Three-minute demo video | **Link not yet recorded/verified.** Record the actual working live path and identify what was built during the event. |
 | Track and team | **Pending representative confirmation.** Choose Indie Developer or Startup, maximum four members, list everyone who worked on the project, confirm eligibility, and have one person submit. Do not use fictional crew names as contributors. |
 | Submission form | **Pending.** Add repository, accessible video and every team member. Check the submitted links while logged out. |
@@ -30,23 +30,23 @@ The repository owner is GitHub account `mk-tdev`. This does not establish the le
 3. Water overlap now intersects the bridge and water masks with image-coordinate area weighting, including different raster resolutions. Water outside the bridge mask does not count; an empty detection yields no percentage. The UI calls the image generated, and the percentage is not physical flood depth or road safety.
 4. Contribution, implementation and submission documents now describe the current features, public repository and recorded live evidence. Historical evaluation artifacts remain dated rather than being presented as freshly rerun measurements.
 
-Verification: `npm run check` (85 tests, strict typecheck and production build) and production function packaging. Local HTTP stand-ins exercise completed first stages followed by stalled planning/SAM; both workflows finish with explicit deadline errors. No new live model calls were required for these regression tests.
+Verification: `npm run check` (90 tests, strict typecheck and production build) and production function packaging. Local HTTP stand-ins exercise completed first stages followed by stalled planning/SAM; both workflows finish with explicit deadline errors. No new live model calls were required for these regression tests.
 
 ## Hosted smoke checklist — required before recording
 
 Run from a logged-out browser against the final URL, not just Vite. Confirm the deployment uses the intended latest commit, credentials stay server-side, `/api/crew` reports the intended provider, and the deployed function duration permits the configured model budget.
 
-- [ ] Give a general school order; receive streamed reports, planning tools, reviews and a checked plan. Approve and finish.
-- [ ] Rewind the decision, explicitly choose the bridge, finish and compare. Verify school arrival at minute 8 versus minute 11.
-- [ ] Enable Autopilot, then take over while it is thinking. Verify no delayed order/approval. Repeat with New drill and a timeline switch.
-- [ ] Record a voice order; show the transcript before it is used.
-- [ ] Generate a bridge drill image; verify the generated label, both outlines, mask overlap and June's interpretation. A model error must leave a readable error and allow retry.
-- [ ] Generate an after-action review; inspect the cited engine events. Citation existence is checked; semantic correctness still needs review.
+- [x] Give a general school order; receive streamed reports, planning tools, reviews and a checked plan. Approve and finish.
+- [x] Rewind the decision, explicitly choose the bridge, finish and compare. Verify school arrival at minute 8 versus minute 11.
+- [x] Enable Autopilot, then take over while it is thinking. Verify no delayed order/approval. Repeat with New drill and a timeline switch.
+- [x] Record a synthetic voice order through the browser and verify the recognized order on the radio before plan approval. Physical microphone permission/sound quality remains a human check.
+- [x] Generate a bridge drill image; verify the generated label, both outlines, mask overlap and June's interpretation. A model error must leave a readable error and allow retry.
+- [x] Generate an after-action review; inspect the cited engine events. Citation existence is checked; semantic correctness still needs review.
 - [ ] Exercise a deliberately short model budget on a preview deployment, verify a terminal error/retry path, then restore the release budget. Do not change the public demo's budget during judging.
-- [ ] Check a phone viewport and a desktop with WebGL. Confirm basic controls remain usable if the 3D scene fails.
+- [x] Check a phone viewport and a desktop with WebGL. Confirm basic controls remain usable if the 3D scene fails.
 - [ ] Open the repo and video while logged out. Confirm track, roster, contribution attribution and form completion.
 
-A passing local failure test or successful function bundle does not substitute for these hosted checks. Use https://crisiscraft.vercel.app for judges. Vercel deployment-specific and main-branch preview URLs redirect unauthenticated visitors to login; those are not the submission link. The fix deployment for code commit `167fb75` reached READY on 1 November. Unauthenticated live API smoke checks then completed the crew workflow in 19.6 seconds (hill route `D → H → S`) and all three photo stages in 20.2 seconds, both with terminal success under the 50-second budget. These two API runs are verified; the complete browser/microphone/takeover checklist above remains pending.
+A passing local failure test or successful function bundle does not substitute for these hosted checks. Use https://crisiscraft.vercel.app for judges. Vercel deployment-specific and main-branch preview URLs redirect unauthenticated visitors to login; those are not the submission link. The fix deployment for code commit `167fb75` reached READY on 1 November. Unauthenticated live API smoke checks then completed the crew workflow in 19.6 seconds (hill route `D → H → S`) and all three photo stages in 20.2 seconds, both with terminal success under the 50-second budget. These API checks were followed by the [production browser rehearsal](production-browser-rehearsal.md). Application logic fixes are in `496f246`, and phone replay CSS in `084f727`. Physical microphone hardware, the separately listed shortened-budget hosted preview check and final submission assets remain pending.
 
 ## Three-minute video
 

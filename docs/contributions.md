@@ -45,4 +45,8 @@ Original scenario logic, prompts, orchestration, controls, procedural art and re
 
 The public repository is [mk-tdev/crisiscraft](https://github.com/mk-tdev/crisiscraft), on `main`. The GitHub account identifies the repository owner; it does not establish every contributor's legal identity or eligibility. Before submitting, the representative must list the actual team members and map their contributions to the work above. Those names have not been supplied in this workspace and must not be invented or replaced with the fictional crew names.
 
-The production alias is https://crisiscraft.vercel.app; unauthenticated HTML and provider-status GET checks passed on 1 November. A complete hosted smoke test of the latest fixes, final three-minute video link, track and complete submission roster remain to be confirmed. Git history and the dated work log support provenance but do not complete the submission form.
+The production alias is https://crisiscraft.vercel.app; unauthenticated HTML and provider-status GET checks passed on 1 November. The [production browser rehearsal](production-browser-rehearsal.md) covers the latest application flows. Physical microphone rehearsal, final three-minute video link, track and complete submission roster remain to be confirmed. Git history and the dated work log support provenance but do not complete the submission form.
+
+## Production rehearsal fixes — 1 November 2026
+
+Browser-driven testing found and fixed reset leaving Autopilot enabled, voice/transcript work surviving a reset or branch, retained field-photo/review state, and clipped phone replay controls. Five media lifecycle regressions bring the suite to 90 tests. The production checks used real Meta responses and a synthetic microphone stream; they do not claim physical-device or validated training coverage.

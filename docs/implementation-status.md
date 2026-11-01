@@ -27,7 +27,7 @@ Crew and photo workflows share a maximum **50-second total model budget**, below
 
 ## Verification
 
-- `npm run check`: 85 tests, strict TypeScript checking and production build.
+- `npm run check`: 90 tests, strict TypeScript checking and production build.
 - Regression tests exercise delayed Autopilot responses after takeover/reset/switch/unmount, stale approvals and old requests completing during a newer request.
 - Mask tests exercise background water, sparse bridge masks, empty masks, fractional overlap and differing raster resolutions.
 - Real localhost HTTP stand-ins complete role reports or image generation, then stall planning/SAM. Both server workflows emit terminal timeout errors; partial client streams fail clearly. No live model credits are used by these tests.
@@ -35,11 +35,11 @@ Crew and photo workflows share a maximum **50-second total model budget**, below
 
 Hosted API smoke checks on production code commit `167fb75` passed on 1 November: a real crew deliberation finished in 19.6 seconds with the hill route (`D → H → S`), and a real photo workflow finished image → segments → read in 20.2 seconds. Both returned terminal success, below the 50-second budget. No credentials were sent by the test client; the deployed server used its configured model key.
 
-These checks establish the live API paths for those two runs. A complete logged-out browser rehearsal, including microphone permission, takeover/reset and branch controls, is still required; historical screenshots are not proof of that final rehearsal.
+These checks establish the live API paths for those two runs. The [production browser rehearsal](production-browser-rehearsal.md) exercised voice through a synthetic microphone, live Autopilot approval and takeover/reset/switching, generated photo, cited review, branch replay, phone layout and forced WebGL failure. Reset/voice ownership defects and clipped phone replay controls were fixed. Physical microphone permission and recording quality still need a human check.
 
 ## Remaining submission steps
 
-1. Verify the deployed fixes at the public production alias: complete crew, voice, photo, review and Autopilot workflows against its real limits and model credentials.
+1. Rehearse the recording with a physical microphone; the production application paths have passed the documented browser rehearsal with a synthetic input stream.
 2. Record/publish the required three-minute video showing only event-built work and identifying the contributions and third-party art.
 3. Confirm one track, the complete team roster (maximum four), eligibility and the submitting representative.
 4. Complete the submission form and verify the public repo and video links while logged out.
