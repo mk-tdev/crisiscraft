@@ -41,24 +41,31 @@ export const scenarioSchema = z.object({
   id, version: id, name: z.string().min(1).max(100),
   horizon: z.number().int().positive(), checkpointTick: tick, depot: id,
   stock: z.number().int().nonnegative(), reserveMinimum: tick,
+  /** One sentence for the scenario picker. */
+  summary: z.string().max(240).optional(),
+  /** When true, a truck drives back to the depot after unloading and can be sent again. */
+  returnToDepot: z.boolean().optional(),
   nodes: z.array(z.object({
     id, label: z.string().min(1).max(100), x: z.number().finite(), z: z.number().finite(),
     kind: z.enum(['depot', 'shelter', 'junction']), receiving: z.boolean(),
   }).strict()).min(1),
   edges: z.array(z.object({
     id, from: id, to: id, minutes: z.number().int().positive(),
+    /** Radio name for the road, e.g. "Harbour bridge". */
+    label: z.string().min(1).max(60).optional(),
   }).strict()).min(1),
-  vehicles: z.array(z.object({ id, capacity: z.number().int().positive() }).strict()).min(1),
+  vehicles: z.array(z.object({ id, capacity: z.number().int().positive(), label: z.string().min(1).max(40).optional() }).strict()).min(1),
   requests: z.array(requestSchema),
   observations: z.array(observationSchema),
   events: z.array(z.discriminatedUnion('type', [
     z.object({ id, tick, type: z.literal('close-road'), edgeId: id }).strict(),
+    z.object({ id, tick, type: z.literal('open-road'), edgeId: id }).strict(),
     z.object({ id, tick, type: z.literal('receiving'), nodeId: id, enabled: z.boolean() }).strict(),
   ])),
 }).strict();
 export type Scenario = z.infer<typeof scenarioSchema>;
 
-export type VehicleStatus = 'idle' | 'travelling' | 'waiting' | 'stranded' | 'delivered';
+export type VehicleStatus = 'idle' | 'travelling' | 'waiting' | 'stranded' | 'delivered' | 'returning';
 export interface VehicleState {
   id: string;
   capacity: number;
@@ -77,8 +84,8 @@ export interface SimEvent {
   id: string;
   tick: number;
   sequence: number;
-  type: 'request-opened' | 'road-closed' | 'receiving-changed' | 'observation-received'
-    | 'dispatched' | 'edge-entered' | 'edge-arrived' | 'rerouted' | 'stranded' | 'delivered';
+  type: 'request-opened' | 'road-closed' | 'road-opened' | 'receiving-changed' | 'observation-received'
+    | 'dispatched' | 'edge-entered' | 'edge-arrived' | 'rerouted' | 'stranded' | 'delivered' | 'returned';
   message: string;
   causeId: string | null;
   data: Record<string, string | number | boolean | string[]>;

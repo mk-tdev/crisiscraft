@@ -56,6 +56,10 @@ export function describe(e: SimEvent): { text: string; tone: Tone } {
       return { text: `${truck} has no open road.`, tone: "bad" };
     case "delivered":
       return { text: `${truck} unloaded ${d.quantity} crates at ${requestNames[String(d.requestId)]}.`, tone: "good" };
+    case "road-opened":
+      return { text: `${roads[String(d.edgeId)] ?? d.edgeId} is open again.`, tone: "good" };
+    case "returned":
+      return { text: `${truck} is back at the depot and can be sent again.`, tone: "info" };
   }
 }
 

@@ -1,5 +1,6 @@
 import { scenarioSchema, type Scenario } from '@crisiscraft/contracts';
 import harborPointData from '../../../scenarios/harbor-point.json';
+import regionData from '../../../scenarios/harbor-point-region.json';
 
 export function parseScenario(input: unknown): Scenario {
   const s = scenarioSchema.parse(input);
@@ -26,7 +27,7 @@ export function parseScenario(input: unknown): Scenario {
     }
   }
   for (const e of s.events) {
-    if (e.tick > s.horizon || (e.type === 'close-road' ? !edges.has(e.edgeId) : !nodes.has(e.nodeId))) {
+    if (e.tick > s.horizon || ('edgeId' in e ? !edges.has(e.edgeId) : !nodes.has(e.nodeId))) {
       throw new Error('Invalid scenario event');
     }
   }
@@ -37,3 +38,12 @@ export function parseScenario(input: unknown): Scenario {
 }
 
 export const harborPoint = parseScenario(harborPointData);
+export const harborRegion = parseScenario(regionData);
+
+/** Every playable scenario, tutorial first. */
+export const scenarios: Scenario[] = [harborPoint, harborRegion];
+export function scenarioById(id: string): Scenario {
+  const found = scenarios.find(s => s.id === id);
+  if (!found) throw new Error(`Unknown scenario ${id}`);
+  return found;
+}

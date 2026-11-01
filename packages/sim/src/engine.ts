@@ -28,6 +28,9 @@ function externalChanges(scenario: Scenario, state: WorldState) {
     if (e.type === 'close-road') {
       state.roads[e.edgeId] = false;
       event(state, 'road-closed', `${e.edgeId} closed to new entry.`, { edgeId: e.edgeId }, e.id);
+    } else if (e.type === 'open-road') {
+      state.roads[e.edgeId] = true;
+      event(state, 'road-opened', `${e.edgeId} open again.`, { edgeId: e.edgeId }, e.id);
     } else {
       state.receiving[e.nodeId] = e.enabled;
       event(state, 'receiving-changed', `${e.nodeId} receiving ${e.enabled ? 'enabled' : 'disabled'}.`,
@@ -73,10 +76,21 @@ export function idleAtDepot(scenario: Scenario, state: WorldState): number {
   return Object.values(state.vehicles).filter(v => v.status === 'idle' && v.node === scenario.depot).length;
 }
 
+/** An empty truck heading home after a delivery, in scenarios where trucks return to reload. */
+const homeward = (scenario: Scenario, v: VehicleState) =>
+  !!scenario.returnToDepot && v.requestId === null && v.cargo === 0 && v.status !== 'idle';
+
 function startNextLeg(scenario: Scenario, state: WorldState, vehicle: VehicleState, causeId: string | null) {
-  if (vehicle.leg || !vehicle.requestId || !vehicle.cargo) return;
-  const destination = state.requests[vehicle.requestId]!.destination;
-  if (vehicle.node === destination) { vehicle.status = 'waiting'; return; }
+  const returning = homeward(scenario, vehicle);
+  if (vehicle.leg || (!returning && (!vehicle.requestId || !vehicle.cargo))) return;
+  const destination = returning ? scenario.depot : state.requests[vehicle.requestId!]!.destination;
+  if (vehicle.node === destination) {
+    if (!returning) { vehicle.status = 'waiting'; return; }
+    vehicle.status = 'idle';
+    vehicle.route = [vehicle.node];
+    event(state, 'returned', `${vehicle.id} is back at the depot and can be sent again.`, { vehicleId: vehicle.id }, causeId);
+    return;
+  }
   let next = vehicle.route[1];
   let edge = next ? edgeBetween(scenario, vehicle.node, next) : undefined;
   if (!edge || !state.roads[edge.id]) {
@@ -84,7 +98,7 @@ function startNextLeg(scenario: Scenario, state: WorldState, vehicle: VehicleSta
     const route = shortestOpenRoute(scenario, state.roads, vehicle.node, destination);
     if (!route) {
       if (vehicle.status !== 'stranded') {
-        event(state, 'stranded', `${vehicle.id} has no open route to ${destination}.`, { vehicleId: vehicle.id }, causeId);
+        event(state, 'stranded', `${vehicle.id} has no open route to ${destination}; waiting for a road to open.`, { vehicleId: vehicle.id }, causeId);
       }
       vehicle.status = 'stranded';
       return;
@@ -92,9 +106,12 @@ function startNextLeg(scenario: Scenario, state: WorldState, vehicle: VehicleSta
     vehicle.route = route;
     next = route[1]!;
     edge = edgeBetween(scenario, vehicle.node, next)!;
-    const closure = [...state.events].reverse().find(e => e.type === 'road-closed' && e.data.edgeId === blockedEdgeId);
-    event(state, 'rerouted', `${vehicle.id} diverted via ${route.join(' → ')}.`,
-      { vehicleId: vehicle.id, route: [...route] }, closure?.id ?? causeId);
+    // A truck heading home has no planned route yet; only a blocked planned road is a diversion.
+    if (blockedEdgeId) {
+      const closure = [...state.events].reverse().find(e => e.type === 'road-closed' && e.data.edgeId === blockedEdgeId);
+      event(state, 'rerouted', `${vehicle.id} diverted via ${route.join(' → ')}.`,
+        { vehicleId: vehicle.id, route: [...route] }, closure?.id ?? causeId);
+    }
   }
   vehicle.leg = { edgeId: edge.id, from: vehicle.node, to: next!, enteredTick: state.tick, arrivalTick: state.tick + edge.minutes };
   vehicle.status = 'travelling';
@@ -102,7 +119,7 @@ function startNextLeg(scenario: Scenario, state: WorldState, vehicle: VehicleSta
     { vehicleId: vehicle.id, edgeId: edge.id, arrivalTick: vehicle.leg.arrivalTick }, causeId);
 }
 
-function unload(state: WorldState, vehicle: VehicleState) {
+function unload(scenario: Scenario, state: WorldState, vehicle: VehicleState) {
   if (vehicle.leg || !vehicle.requestId || vehicle.cargo === 0) return;
   const request = state.requests[vehicle.requestId]!;
   if (vehicle.node !== request.destination || !state.receiving[vehicle.node]) return;
@@ -111,6 +128,11 @@ function unload(state: WorldState, vehicle: VehicleState) {
   vehicle.cargo = 0;
   vehicle.status = 'delivered';
   vehicle.route = [vehicle.node];
+  if (scenario.returnToDepot) {
+    // Unloaded: the truck is free and heads home on the next minute.
+    vehicle.requestId = null;
+    vehicle.status = 'returning';
+  }
   if (request.delivered === request.quantity) request.completedTick = state.tick;
   const dispatch = [...state.events].reverse().find(e => e.type === 'dispatched' && e.data.vehicleId === vehicle.id);
   event(state, 'delivered', `${vehicle.id} unloaded ${quantity} crates for ${request.id}.`,
@@ -162,7 +184,7 @@ export function approveCommand(scenario: Scenario, current: WorldState, input: u
     event(state, 'dispatched', `${vehicle.id}: ${action.quantity} crates to ${request.destination} via ${action.route.join(' → ')}.`,
       { vehicleId: vehicle.id, requestId: request.id, quantity: action.quantity, route: [...action.route] }, command.id);
     startNextLeg(scenario, state, vehicle, command.id);
-    unload(state, vehicle);
+    unload(scenario, state, vehicle);
   }
   if (idleAtDepot(scenario, state) < state.reserveMinimum) invalid('Dispatch would violate the idle-at-depot reserve rule.');
   state.commands.push({ tick: state.tick, command: clone(command) });
@@ -196,7 +218,7 @@ export function advanceTo(scenario: Scenario, current: WorldState, targetTick: n
       }
     }
     for (const vehicle of vehicles) startNextLeg(scenario, state, vehicle, null);
-    for (const vehicle of vehicles) unload(state, vehicle);
+    for (const vehicle of vehicles) unload(scenario, state, vehicle);
     publishObservations(scenario, state);
     state.revision++;
     assertInvariants(scenario, state);
