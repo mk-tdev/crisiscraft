@@ -35,6 +35,34 @@ The referenced **Assess hackathon eligibility** and **Preview agentic coffee sho
 - Added local/Vercel Node handlers, provider tests and the recorded [30 live crew evaluations](eval/crew-eval.md).
 - Fixed stale Autopilot responses after takeover/reset, added total model-workflow deadlines and explicit stream errors, corrected water overlap to intersect both segmentation masks, and added targeted regression tests.
 
+## New work on 1–2 November 2026
+
+- Added a second scenario, **Harbor Point Region** (`scenarios/harbor-point-region.json`). It is a 50-minute drill across the expanded town:
+  - a port depot;
+  - four places in need: care home, hill school, village hall across the bay, field hospital;
+  - four trucks;
+  - three hazards: the harbour bridge closure, the tidal causeway, and a false landslide report.
+- Extended the engine in three ways:
+  - roads can reopen;
+  - per scenario, trucks drive back to the depot to reload;
+  - road and vehicle names are stored in the scenario.
+
+  Engine tests play the intended solution and each trap.
+- Added a scenario picker in the mission briefing. The crew, endpoints and interface now play any scenario: names, crew posts, chips, suggestions, replay outcomes and debriefs all follow the chosen drill. A general scripted crew covers scenarios beyond the tutorial.
+- Added the **Rescue Helicopter**:
+  - travel modes in the engine, so aircraft fly only air routes and trucks drive only roads;
+  - gusts that close the air routes from minute 20 to 25;
+  - aircraft excluded from the truck reserve;
+  - mode-aware briefings, planning tools and instructions;
+  - a procedural coastguard helicopter model, helipads and landing zones, take-off, flight and landing animation, sky arcs for flights, and grounded visuals.
+- Added the **Agents panel**: a live pipeline and timing chart built from per-turn start offsets the server now records, every model call with its exact instructions and briefing, and the run's journey of orders, initiatives, photos and Autopilot moves.
+- Made the 3D world object-aware:
+  - scenery kept clear of every truck route by its footprint;
+  - traffic that yields to moving rescue trucks and keeps its distance;
+  - pedestrians who pause for trucks.
+
+  All placement is computed once at load.
+
 ## Contribution boundaries for the demo
 
 The team may demonstrate the implemented live Meta features when the deployment is configured and they actually run. Without credentials, the product uses explicitly labelled scripted behaviour; do not present that mode as live inference. The engine remains responsible for valid actions and deterministic outcomes. Generated field images are synthetic scenario illustrations, not real observations. Event-ID checks establish citation existence, not the truth of every generated explanation.
