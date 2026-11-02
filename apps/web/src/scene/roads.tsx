@@ -14,6 +14,7 @@ import { harborPoint } from "@crisiscraft/sim";
 import { useProp, useSurface } from "./assets";
 import { BRIDGE, BRIDGE_DECK, GROUND, RIVER, node, type Point, roadHeight } from "./layout";
 import { chevronTexture, signTexture, stripeTexture } from "./text";
+import { AirArc } from "./helicopter";
 
 /** A flat strip that follows the road surface height, with v measured in scene units. */
 function ribbon(a: Point, b: Point, width: number, lift: number, step = 0.25) {
@@ -105,7 +106,7 @@ export function Roads({ scenario = harborPoint }: { scenario?: Scenario }) {
   const dashes = useMemo(() => dashTexture(), []);
   return (
     <>
-      {scenario.edges.map((e) => (
+      {scenario.edges.filter((e) => e.mode !== "air").map((e) => (
         <Segment key={e.id} a={node(e.from, scenario)} b={node(e.to, scenario)} asphalt={asphalt} kerb={kerb} dashes={dashes} />
       ))}
       {scenario.nodes.map((n) => (
@@ -231,6 +232,14 @@ export function BridgeClosure({ closed, warning }: { closed: boolean; warning: b
 
 /** Glowing chevrons scroll along the proposed route; closed legs turn coral. */
 export function RouteGlow({ route, roads, scenario = harborPoint }: { route: string[]; roads: Record<string, boolean>; scenario?: Scenario }) {
+  // A flight is drawn as an arc in the sky; only road legs get the glowing ribbon.
+  const air = route.length === 2 && !scenario.edges.some((e) => e.mode !== "air" && ((e.from === route[0] && e.to === route[1]) || (e.to === route[0] && e.from === route[1])));
+  const airEdge = air ? scenario.edges.find((e) => e.mode === "air" && ((e.from === route[0] && e.to === route[1]) || (e.to === route[0] && e.from === route[1]))) : undefined;
+  if (airEdge) return <AirArc from={route[0]!} to={route[1]!} closed={roads[airEdge.id] === false} />;
+  return <RoadGlow route={route} roads={roads} scenario={scenario} />;
+}
+
+function RoadGlow({ route, roads, scenario }: { route: string[]; roads: Record<string, boolean>; scenario: Scenario }) {
   const chevrons = useMemo(() => {
     const t = chevronTexture().clone();
     t.wrapS = t.wrapT = RepeatWrapping;
@@ -242,7 +251,7 @@ export function RouteGlow({ route, roads, scenario = harborPoint }: { route: str
     () =>
       route.slice(1).map((to, i) => {
         const from = route[i]!;
-        const edge = scenario.edges.find((e) => (e.from === from && e.to === to) || (e.to === from && e.from === to));
+        const edge = scenario.edges.find((e) => e.mode !== "air" && ((e.from === from && e.to === to) || (e.to === from && e.from === to)));
         return { key: `${from}-${to}`, edgeId: edge?.id ?? "", geometry: ribbon(node(from, scenario), node(to, scenario), 0.42, 0.035) };
       }),
     [route, scenario],

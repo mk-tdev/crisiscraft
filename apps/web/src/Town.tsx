@@ -13,6 +13,7 @@ import { RegionLandmarks } from "./scene/region";
 import { Person, Townsfolk, look } from "./scene/people";
 import { BridgeClosure, RouteGlow, Roads } from "./scene/roads";
 import { Truck, truckName, truckPosition } from "./scene/vehicles";
+import { Helipads, RescueHelicopter, flightOf } from "./scene/helicopter";
 import { Floodwater } from "./scene/water";
 import { Lightning, Rain } from "./scene/weather";
 
@@ -47,6 +48,8 @@ const crewLook = {
   shelter: look(302, { jacket: "#2f6fe4", vest: false, hood: true, umbrella: undefined, skin: "#8a5a3b" }),
   field: look(303, { jacket: "#e8a317", vest: true, hood: true, umbrella: undefined, skin: "#f1c7a5" }),
 };
+/** Reused every frame by the helicopter's chip, so following it allocates nothing. */
+const chipFlight = { x: 0, z: 0, alt: 0, heading: 0, airborne: false };
 const crewFacing: Record<CrewRole, number> = { logistics: 0.6, shelter: Math.PI * 0.85, field: Math.PI * 0.6 };
 
 function Scene({
@@ -72,6 +75,9 @@ function Scene({
   const school = state.requests.school;
   const east = state.requests.east;
   const vehicleIds = scenario.vehicles.map((v) => v.id);
+  const aircraft = scenario.vehicles.filter((v) => v.mode === "air").map((v) => v.id);
+  // Gusts close every air route at once; the helicopter is grounded while any is shut.
+  const grounded = scenario.edges.some((e) => e.mode === "air" && state.roads[e.id] === false);
   const showTruck = (id: string) => {
     const v = state.vehicles[id]!;
     return v.status !== "idle" || v.cargo > 0 || v.node !== scenario.depot;
@@ -167,7 +173,7 @@ function Scene({
       {route.length > 1 && <RouteGlow route={route} roads={state.roads} scenario={scenario} />}
       <Neighbourhood compact={compact} scenarioId={scenario.id} />
       <OuterTown tick={flood} compact={compact} />
-      {!compact && <Outskirts tick={flood} />}
+      {!compact && <Outskirts tick={flood} patrol={!region} />}
       {region ? (
         <>
           {/* The tutorial's landmarks stay as ordinary town buildings in the region. */}
@@ -175,6 +181,7 @@ function Scene({
           <SchoolShelter powered delivered={0} sign="TOWN HALL ANNEX" colour="#52525b" />
           <EastShelter delivered={0} sign="COMMUNITY HALL" colour="#52525b" />
           <RegionLandmarks state={state} floodTick={flood} />
+          {aircraft.length > 0 && <Helipads grounded={grounded} />}
         </>
       ) : (
         <>
@@ -194,7 +201,10 @@ function Scene({
           phase={member.role.length}
         />
       ))}
-      {vehicleIds.map((id) => (
+      {aircraft.map((id) => (
+        <RescueHelicopter key={id} state={state} id={id} progress={progress} onSelect={onSelect ? () => onSelect(id) : undefined} />
+      ))}
+      {vehicleIds.filter((id) => !aircraft.includes(id)).map((id) => (
         <Truck
           key={id}
           state={state}
@@ -220,7 +230,26 @@ function Scene({
               onSelect={onSelect ? () => onSelect(chip.id) : undefined}
             />
           ))}
-          {vehicleIds.filter(showTruck).map((id) => {
+          {aircraft.map((id) => {
+            const v = state.vehicles[id]!;
+            const flying = !!v.leg;
+            return (
+              <PlaceChip
+                key={id}
+                root={root}
+                at={() => {
+                  const f = flightOf(state, id, progress, chipFlight);
+                  return [f.x, 1.6 + f.alt, f.z];
+                }}
+                name={truckName(state, id)}
+                detail={flying ? `flying${v.cargo ? ` · ${v.cargo} crates` : " · returning"}` : grounded ? (v.node === scenario.depot ? "grounded · gusts" : "grounded at landing zone") : v.node === scenario.depot ? "on the helipad" : "landed"}
+                tone={flying ? "warn" : grounded ? "alert" : "ok"}
+                selected={selected === id}
+                onSelect={onSelect ? () => onSelect(id) : undefined}
+              />
+            );
+          })}
+          {vehicleIds.filter((id) => !aircraft.includes(id)).filter(showTruck).map((id) => {
             const v = state.vehicles[id]!;
             return (
               <PlaceChip

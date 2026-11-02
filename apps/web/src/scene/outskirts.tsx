@@ -25,6 +25,7 @@ import { Instances, type Placement, flatQuads, roofGeometry } from "./instancing
 import { GROUND, HARBOUR, type Point, RAIL_Z, clearOfRoads, footprint, nearestSpot, nearestTruck2, rand, waterLevel } from "./layout";
 import { BOAT_DECK, type BoatModel, boatModel, carModels } from "./models";
 import { signTexture } from "./text";
+import { PatrolHelicopter } from "./helicopter";
 
 /**
  * The world beyond Harbor Point's streets: a container port to the west, farmland and a railway,
@@ -921,69 +922,6 @@ function BayBoats({ tick }: { tick: number }) {
   );
 }
 
-/** A coastguard helicopter circling the bay, watching the surge. */
-function Helicopter() {
-  const body = useRef<Group>(null);
-  const rotor = useRef<Group>(null);
-  const tail = useRef<Group>(null);
-  const beacon = useRef<MeshStandardMaterial>(null);
-  useFrame(({ clock }, delta) => {
-    const t = clock.elapsedTime;
-    const a = t * 0.16;
-    if (body.current) {
-      body.current.position.set(4 + Math.cos(a) * 11, 7.5 + Math.sin(t * 0.7) * 0.25, -27 + Math.sin(a) * 7);
-      body.current.rotation.set(0, Math.atan2(-Math.sin(a) * 11, Math.cos(a) * 7), -0.18);
-    }
-    if (rotor.current) rotor.current.rotation.y += delta * 22;
-    if (tail.current) tail.current.rotation.x += delta * 30;
-    if (beacon.current) beacon.current.emissiveIntensity = Math.sin(t * 6) > 0.6 ? 4 : 0.2;
-  });
-  return (
-    <group ref={body}>
-      <mesh scale={[0.5, 0.48, 0.95]}>
-        <sphereGeometry args={[1, 16, 12]} />
-        <meshStandardMaterial color="#d9443a" roughness={0.45} metalness={0.2} />
-      </mesh>
-      <mesh position={[0, 0.08, 0.55]} scale={[0.38, 0.3, 0.42]}>
-        <sphereGeometry args={[1, 12, 10]} />
-        <meshStandardMaterial color="#1d2830" roughness={0.05} metalness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.12, -1.4]}>
-        <boxGeometry args={[0.14, 0.16, 1.6]} />
-        <meshStandardMaterial color="#f1efe8" />
-      </mesh>
-      <mesh position={[0, 0.38, -2.15]}>
-        <boxGeometry args={[0.05, 0.5, 0.32]} />
-        <meshStandardMaterial color="#d9443a" />
-      </mesh>
-      {[-0.32, 0.32].map((x) => (
-        <mesh key={x} position={[x, -0.55, 0]}>
-          <boxGeometry args={[0.05, 0.05, 1.3]} />
-          <meshStandardMaterial color="#2c3338" />
-        </mesh>
-      ))}
-      <group ref={rotor} position={[0, 0.55, 0]}>
-        {[0, Math.PI / 2].map((r) => (
-          <mesh key={r} rotation={[0, r, 0]}>
-            <boxGeometry args={[3.6, 0.02, 0.12]} />
-            <meshStandardMaterial color="#2c3338" />
-          </mesh>
-        ))}
-      </group>
-      <group ref={tail} position={[0.1, 0.38, -2.15]}>
-        <mesh>
-          <boxGeometry args={[0.02, 0.7, 0.07]} />
-          <meshStandardMaterial color="#2c3338" />
-        </mesh>
-      </group>
-      <mesh position={[0, -0.45, 0.2]}>
-        <sphereGeometry args={[0.07, 8, 6]} />
-        <meshStandardMaterial ref={beacon} color="#ffd9d0" emissive="#ff3b2e" emissiveIntensity={0.2} />
-      </mesh>
-    </group>
-  );
-}
-
 /* ------------------------------------------------------------------ flood defences */
 
 /** Sandbag walls along the town quay, either side of the river mouth. */
@@ -1009,7 +947,8 @@ function Sandbags() {
 
 /* ------------------------------------------------------------------ outskirts */
 
-export function Outskirts({ tick }: { tick: number }) {
+/** `patrol` adds the decorative coastguard helicopter; the region flies a real one instead. */
+export function Outskirts({ tick, patrol = true }: { tick: number; patrol?: boolean }) {
   return (
     <>
       <Estate />
@@ -1019,7 +958,7 @@ export function Outskirts({ tick }: { tick: number }) {
       <FarShore />
       <Traffic />
       <BayBoats tick={tick} />
-      <Helicopter />
+      {patrol && <PatrolHelicopter />}
       <Sandbags />
     </>
   );

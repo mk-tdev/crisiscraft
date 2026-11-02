@@ -94,8 +94,23 @@ export function distanceToSegment(px: number, pz: number, a: Point, b: Point) {
 
 /** Gameplay roads of every scenario, so the shared scenery stays clear of whichever is played. */
 export const roadSegments = [harborPoint, harborRegion].flatMap((s) =>
-  s.edges.map((e) => ({ id: `${s.id}:${e.id}`, a: node(e.from, s), b: node(e.to, s) })),
+  s.edges.filter((e) => e.mode !== "air").map((e) => ({ id: `${s.id}:${e.id}`, a: node(e.from, s), b: node(e.to, s) })),
 );
+
+/**
+ * Where an aircraft stands at each place it can fly between: the helipad at the port depot and
+ * small landing zones beside the regional landmarks. Flights run pad to pad, not node to node.
+ */
+export const helipads: Record<string, Point> = {
+  P: [-70, GROUND, 3.6],
+  V: [-8.5, GROUND, -44],
+  H: [-15, GROUND, 58.6],
+  C: [36.8, GROUND, -8.8],
+};
+/** Painted landing circle; scenery keeps this far from each pad's centre. */
+export const PAD_RADIUS = 1.5;
+/** Cruise height for the rescue helicopter, above every roof in town. */
+export const CRUISE = 5.5;
 
 /** Half-width of a gameplay road as drawn in roads.tsx (1.0 asphalt inside a 1.34 kerb). */
 export const ROAD_HALF = 0.67;
@@ -112,6 +127,10 @@ const segmentBoxes = roadSegments.map((s) => ({
  */
 export function clearOfRoads(x: number, z: number, radius = 0, margin = 0.2, scenarioId?: string) {
   const reach = ROAD_HALF + radius + margin;
+  // Helipads and landing zones stay clear too, so the helicopter never lands on a roof or a tree.
+  if (!scenarioId || scenarioId === harborRegion.id) {
+    for (const p of Object.values(helipads)) if (Math.hypot(x - p[0], z - p[2]) < PAD_RADIUS + radius + margin) return false;
+  }
   for (const s of segmentBoxes) {
     if (scenarioId && !s.id.startsWith(`${scenarioId}:`)) continue;
     if (x < s.x0 - reach || x > s.x1 + reach || z < s.z0 - reach || z > s.z1 + reach) continue;
@@ -150,6 +169,7 @@ export function nearestTruck2(x: number, z: number) {
 /** True when a scenery item at (x, z) would sit on a road, river, or building lot. */
 export function blocked(x: number, z: number, clearance = 1.1) {
   if (x > RIVER.west - 0.6 && x < RIVER.east + 0.6 && z < RIVER.end + 0.6) return true;
+  if (Object.values(helipads).some((p) => Math.hypot(x - p[0], z - p[2]) < 1.9 + clearance * 0.5)) return true;
   if (!clearOfRoads(x, z, Math.max(0, clearance - ROAD_HALF - 0.2))) return true;
   if (onStreet(x, z, 0.5)) return true;
   return [...Object.values(sites), ...Object.values(regionSites)].some((s) => Math.abs(x - s.at[0]) < 2.8 && Math.abs(z - s.at[2]) < 2.6);

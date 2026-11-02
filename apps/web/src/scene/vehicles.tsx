@@ -5,15 +5,22 @@ import type { WorldState } from "@crisiscraft/contracts";
 import { vehiclePosition } from "@crisiscraft/sim";
 import { FAR, isRegion, roadHeight, scenarioOf, truckSlot, truckSpots } from "./layout";
 import { signTexture } from "./text";
+import { type Flight, flightOf } from "./helicopter";
 
 /** Parking bays beside the depot for idle trucks; moving trucks follow the engine position. */
 const parking: Record<string, [number, number]> = { V1: [-6.3, 5.0], V2: [-7.7, 5.0] };
 /** In the region the trucks wait in a row on the port apron, beside the depot shed. */
 const regionParking: Record<string, [number, number]> = { V1: [-60.4, 2.0], V2: [-61.8, 2.0], V3: [-63.2, 2.0], V4: [-64.9, 2.0] };
 
+const scratch: Flight = { x: 0, z: 0, alt: 0, heading: 0, airborne: false };
 export function truckPosition(state: WorldState, id: string, progress: number): [number, number] {
   const scenario = scenarioOf(state);
   const v = state.vehicles[id]!;
+  // Aircraft fly pad to pad; their ground position follows the flight, not the road graph.
+  if (v.mode === "air") {
+    flightOf(state, id, progress, scratch);
+    return [scratch.x, scratch.z];
+  }
   if (v.status === "idle" && v.node === scenario.depot && !v.leg) return (isRegion(scenario) ? regionParking : parking)[id] ?? [0, 0];
   return vehiclePosition(scenario, v, state.tick + (v.leg ? progress : 0));
 }
