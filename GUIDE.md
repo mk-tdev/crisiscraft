@@ -20,7 +20,7 @@ The lesson the drill teaches: **a warning only helps if it reaches the person ma
 
 ## Two drills
 
-Pick a drill in the **mission briefing**. It opens on your first visit, and the ⓘ button at the top right reopens it. Switching drills starts a fresh run.
+Pick a drill in the **mission briefing**. It opens on your first visit. After that, click the **drill button** in the top bar (it shows the current drill's name and **Change drill**) to open it again. Choosing a drill starts it from the beginning, and choosing the one you're already playing restarts it.
 
 | | **Harbor Point** (tutorial) | **Harbor Point Region** |
 |---|---|---|

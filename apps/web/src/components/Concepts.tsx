@@ -64,6 +64,7 @@ export function Briefing({ open, onClose, scenarioId, onScenario }: {
           {scenarios.map((s) => (
             <button key={s.id} role="radio" aria-checked={s.id === scenarioId} className={s.id === scenarioId ? "on" : ""} onClick={() => onScenario(s.id)}>
               <strong>{s.name}</strong>
+              <em>{s.id === scenarioId ? "Restart from the beginning" : "Start this drill"}</em>
               <small>{pitch[s.id]?.meta ?? s.summary}</small>
             </button>
           ))}

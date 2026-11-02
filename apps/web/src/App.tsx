@@ -441,6 +441,15 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
         </div>
 
         <div className="hud-right">
+          <button
+            className="drill-switch"
+            onClick={() => setBriefing(true)}
+            title="Choose a drill or restart this one"
+          >
+            <Icon name="map" size={14} />
+            <span>{scenario().name}</span>
+            <small>Change drill</small>
+          </button>
           {timelines.B && (
             <div className="segmented" role="group" aria-label="Timeline">
               <button

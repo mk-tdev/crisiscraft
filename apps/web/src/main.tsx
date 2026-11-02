@@ -8,7 +8,7 @@ import './scene/scene.css';
 
 const CHOSEN = 'crisiscraft:scenario';
 
-/** Picks the drill. Switching scenario remounts the app, so every run starts clean. */
+/** Picks the drill. Choosing one, even the current one, remounts the app so the run starts clean. */
 function Root() {
   const [id, setId] = useState(() => {
     try {
@@ -18,12 +18,14 @@ function Root() {
       return scenarios[0]!.id;
     }
   });
+  const [run, setRun] = useState(0);
   setScenario(scenarioById(id));
   const choose = (next: string) => {
     try { localStorage.setItem(CHOSEN, next); } catch { /* private mode: the choice lasts this visit */ }
     setId(next);
+    setRun((n) => n + 1);
   };
-  return <App key={id} scenarioId={id} onScenario={choose} />;
+  return <App key={`${id}:${run}`} scenarioId={id} onScenario={choose} />;
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><Root /></StrictMode>);
