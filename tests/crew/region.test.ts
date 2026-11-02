@@ -8,7 +8,9 @@ describe('crew in Harbor Point Region', () => {
   it('briefs with the region\'s own road and truck names', () => {
     const b = briefing(region, at(2), 'logistics');
     expect(b.drill).toBe('Harbor Point Region');
-    expect(b.board.trucks.map(t => t.name)).toEqual(['Rescue 01', 'Rescue 02', 'Rescue 03', 'Lorry 04']);
+    expect(b.board.trucks.map(t => t.name)).toEqual(['Rescue 01', 'Rescue 02', 'Rescue 03', 'Lorry 04', 'Rescue Helicopter']);
+    expect(b.board.trucks.at(-1)!.kind).toBe('helicopter');
+    expect(b.roadMap!.roads.find(r => r.id === 'AV')!.mode).toMatch(/air/);
     expect(b.roadMap!.roads.find(r => r.id === 'XV')!.name).toBe('causeway');
     expect(briefing(region, at(2), 'field').observations.map(o => o.id)).toEqual(['tide-0']);
   });
@@ -18,13 +20,18 @@ describe('crew in Harbor Point Region', () => {
     expect(d.command?.actions[0]).toMatchObject({ requestId: 'care', quantity: 8, route: ['P', 'W', 'Q', 'J', 'B', 'C'] });
   });
 
-  it("June's tide warning reaches Priya, who will not send a truck onto the causeway", async () => {
+  it("June's tide warning reaches Priya, who flies the village run instead of using the causeway", async () => {
     const d = await deliberate(region, at(8), 'Get the village its crates.', scriptedProvider);
     const june = d.turns.find(t => t.kind === 'review' && t.from === 'field')!;
     expect(june).toMatchObject({ verdict: 'concern' });
     expect(june.text).toMatch(/high water will cover the causeway/);
-    expect(d.command).toBeNull();
-    expect(`${d.plan?.message} ${d.plan?.rationale}`).toMatch(/causeway/i);
+    expect(d.command?.actions[0]).toMatchObject({ vehicleId: 'H1', requestId: 'village', quantity: 4, route: ['P', 'V'] });
+  });
+
+  it('never sends a truck on an air route, nor the helicopter on a road', async () => {
+    const d = await deliberate(region, at(2), 'Care home first.', scriptedProvider);
+    expect(d.command?.actions[0]!.vehicleId).not.toBe('H1');
+    expect(d.command?.actions[0]!.route).toEqual(['P', 'W', 'Q', 'J', 'B', 'C']);
   });
 
   it('the API replays the scenario the client names', async () => {

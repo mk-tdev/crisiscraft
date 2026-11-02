@@ -313,7 +313,11 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
             ? "Six crates. One school. Nine minutes."
             : "Four places in need. One tide.";
   // Region chips: every road the storm can close, and the next deadline still open.
-  const hazardRoads = [...new Set(scenario().events.flatMap((e) => ("edgeId" in e ? [e.edgeId] : [])))];
+  const airEdges = new Set(scenario().edges.filter((e) => e.mode === "air").map((e) => e.id));
+  const hazardRoads = [...new Set(scenario().events.flatMap((e) => ("edgeId" in e && !airEdges.has(e.edgeId) ? [e.edgeId] : [])))];
+  // One chip for the helicopter: grounded while gusts close its air routes, otherwise where it is.
+  const helicopter = Object.values(world.vehicles).find((v) => v.mode === "air");
+  const grounded = airEdges.size > 0 && [...airEdges].every((id) => !world.roads[id]);
   const nextDue = Object.values(world.requests)
     .filter((r) => r.completedTick == null)
     .sort((a, b) => a.dueTick - b.dueTick)[0];
@@ -539,6 +543,12 @@ export function App({ scenarioId, onScenario }: { scenarioId: string; onScenario
                 <Icon name="bridge" size={14} /> {roads[id]} {world.roads[id] ? "open" : "closed"}
               </li>
             ))}
+            {helicopter && (
+              <li className={grounded ? "bad" : helicopter.status === "idle" ? "good" : "warn"}>
+                <Icon name="spark" size={14} /> Helicopter{" "}
+                {grounded ? "grounded" : helicopter.status === "idle" ? "ready" : helicopter.status === "travelling" ? "flying" : helicopter.status === "returning" ? "returning" : helicopter.status}
+              </li>
+            )}
             <li>
               <Icon name="layers" size={14} /> {world.stock} crates
             </li>

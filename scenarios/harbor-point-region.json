@@ -1,70 +1,539 @@
 {
-  "id": "harbor-point-region", "version": "1", "name": "Harbor Point Region",
-  "summary": "Four places in need, three hazards, one tide. Trucks return to reload; there are not enough crates or trucks to do everything at once.",
-  "horizon": 50, "checkpointTick": 2, "depot": "P", "stock": 34, "reserveMinimum": 1, "returnToDepot": true,
+  "id": "harbor-point-region",
+  "version": "2",
+  "name": "Harbor Point Region",
+  "summary": "Four places in need, three hazards, one tide, and a helicopter that can fly over the water until the gusts ground it. Trucks return to reload; there are not enough crates or trucks to do everything at once.",
+  "horizon": 50,
+  "checkpointTick": 2,
+  "depot": "P",
+  "stock": 34,
+  "reserveMinimum": 1,
+  "returnToDepot": true,
   "nodes": [
-    { "id": "P", "label": "Port depot", "x": -58, "z": -0.45, "kind": "depot", "receiving": true },
-    { "id": "W", "label": "West Road junction", "x": -40.5, "z": 4.2, "kind": "junction", "receiving": true },
-    { "id": "Q", "label": "Quay junction", "x": -8, "z": 4.2, "kind": "junction", "receiving": true },
-    { "id": "J", "label": "Bridge west end", "x": -3, "z": -3, "kind": "junction", "receiving": true },
-    { "id": "B", "label": "Bridge east end", "x": 6, "z": -3, "kind": "junction", "receiving": true },
-    { "id": "C", "label": "Care home", "x": 29, "z": -8, "kind": "shelter", "receiving": true },
-    { "id": "R", "label": "Ring Road junction", "x": -5.8, "z": 13.6, "kind": "junction", "receiving": true },
-    { "id": "E", "label": "Market junction", "x": 29, "z": 13.6, "kind": "junction", "receiving": true },
-    { "id": "K", "label": "Estate turn", "x": -5.8, "z": 42.5, "kind": "junction", "receiving": true },
-    { "id": "S", "label": "School shelter", "x": -17.5, "z": 46.8, "kind": "shelter", "receiving": true },
-    { "id": "F", "label": "Farm junction", "x": -40.5, "z": 48, "kind": "junction", "receiving": true },
-    { "id": "H", "label": "Field hospital", "x": -5.8, "z": 61, "kind": "shelter", "receiving": true },
-    { "id": "X", "label": "Causeway head", "x": -17.5, "z": -11, "kind": "junction", "receiving": true },
-    { "id": "V", "label": "Village hall", "x": -17.5, "z": -44, "kind": "shelter", "receiving": true }
+    {
+      "id": "P",
+      "label": "Port depot",
+      "x": -58,
+      "z": -0.45,
+      "kind": "depot",
+      "receiving": true
+    },
+    {
+      "id": "W",
+      "label": "West Road junction",
+      "x": -40.5,
+      "z": 4.2,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "Q",
+      "label": "Quay junction",
+      "x": -8,
+      "z": 4.2,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "J",
+      "label": "Bridge west end",
+      "x": -3,
+      "z": -3,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "B",
+      "label": "Bridge east end",
+      "x": 6,
+      "z": -3,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "C",
+      "label": "Care home",
+      "x": 29,
+      "z": -8,
+      "kind": "shelter",
+      "receiving": true
+    },
+    {
+      "id": "R",
+      "label": "Ring Road junction",
+      "x": -5.8,
+      "z": 13.6,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "E",
+      "label": "Market junction",
+      "x": 29,
+      "z": 13.6,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "K",
+      "label": "Estate turn",
+      "x": -5.8,
+      "z": 42.5,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "S",
+      "label": "School shelter",
+      "x": -17.5,
+      "z": 46.8,
+      "kind": "shelter",
+      "receiving": true
+    },
+    {
+      "id": "F",
+      "label": "Farm junction",
+      "x": -40.5,
+      "z": 48,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "H",
+      "label": "Field hospital",
+      "x": -5.8,
+      "z": 61,
+      "kind": "shelter",
+      "receiving": true
+    },
+    {
+      "id": "X",
+      "label": "Causeway head",
+      "x": -17.5,
+      "z": -11,
+      "kind": "junction",
+      "receiving": true
+    },
+    {
+      "id": "V",
+      "label": "Village hall",
+      "x": -17.5,
+      "z": -44,
+      "kind": "shelter",
+      "receiving": true
+    }
   ],
   "edges": [
-    { "id": "PW", "from": "P", "to": "W", "minutes": 3, "label": "Port Road" },
-    { "id": "WQ", "from": "W", "to": "Q", "minutes": 4, "label": "Quay Street" },
-    { "id": "QJ", "from": "Q", "to": "J", "minutes": 1, "label": "Harbour Road" },
-    { "id": "JS", "from": "J", "to": "B", "minutes": 2, "label": "harbour bridge" },
-    { "id": "BC", "from": "B", "to": "C", "minutes": 3, "label": "Harbour Street" },
-    { "id": "QR", "from": "Q", "to": "R", "minutes": 2, "label": "Town Lane" },
-    { "id": "RE", "from": "R", "to": "E", "minutes": 4, "label": "Ring Road" },
-    { "id": "EC", "from": "E", "to": "C", "minutes": 3, "label": "Market Lane" },
-    { "id": "RK", "from": "R", "to": "K", "minutes": 3, "label": "Station Road" },
-    { "id": "KS", "from": "K", "to": "S", "minutes": 2, "label": "Estate Drive" },
-    { "id": "KH", "from": "K", "to": "H", "minutes": 2, "label": "Station Road south" },
-    { "id": "WF", "from": "W", "to": "F", "minutes": 6, "label": "West Road" },
-    { "id": "FS", "from": "F", "to": "S", "minutes": 4, "label": "Farm Lane" },
-    { "id": "QX", "from": "Q", "to": "X", "minutes": 2, "label": "Yard Lane" },
-    { "id": "XV", "from": "X", "to": "V", "minutes": 4, "label": "causeway" }
+    {
+      "id": "PW",
+      "from": "P",
+      "to": "W",
+      "minutes": 3,
+      "label": "Port Road"
+    },
+    {
+      "id": "WQ",
+      "from": "W",
+      "to": "Q",
+      "minutes": 4,
+      "label": "Quay Street"
+    },
+    {
+      "id": "QJ",
+      "from": "Q",
+      "to": "J",
+      "minutes": 1,
+      "label": "Harbour Road"
+    },
+    {
+      "id": "JS",
+      "from": "J",
+      "to": "B",
+      "minutes": 2,
+      "label": "harbour bridge"
+    },
+    {
+      "id": "BC",
+      "from": "B",
+      "to": "C",
+      "minutes": 3,
+      "label": "Harbour Street"
+    },
+    {
+      "id": "QR",
+      "from": "Q",
+      "to": "R",
+      "minutes": 2,
+      "label": "Town Lane"
+    },
+    {
+      "id": "RE",
+      "from": "R",
+      "to": "E",
+      "minutes": 4,
+      "label": "Ring Road"
+    },
+    {
+      "id": "EC",
+      "from": "E",
+      "to": "C",
+      "minutes": 3,
+      "label": "Market Lane"
+    },
+    {
+      "id": "RK",
+      "from": "R",
+      "to": "K",
+      "minutes": 3,
+      "label": "Station Road"
+    },
+    {
+      "id": "KS",
+      "from": "K",
+      "to": "S",
+      "minutes": 2,
+      "label": "Estate Drive"
+    },
+    {
+      "id": "KH",
+      "from": "K",
+      "to": "H",
+      "minutes": 2,
+      "label": "Station Road south"
+    },
+    {
+      "id": "WF",
+      "from": "W",
+      "to": "F",
+      "minutes": 6,
+      "label": "West Road"
+    },
+    {
+      "id": "FS",
+      "from": "F",
+      "to": "S",
+      "minutes": 4,
+      "label": "Farm Lane"
+    },
+    {
+      "id": "QX",
+      "from": "Q",
+      "to": "X",
+      "minutes": 2,
+      "label": "Yard Lane"
+    },
+    {
+      "id": "XV",
+      "from": "X",
+      "to": "V",
+      "minutes": 4,
+      "label": "causeway"
+    },
+    {
+      "id": "AV",
+      "from": "P",
+      "to": "V",
+      "minutes": 5,
+      "label": "air route to the village hall",
+      "mode": "air"
+    },
+    {
+      "id": "AH",
+      "from": "P",
+      "to": "H",
+      "minutes": 6,
+      "label": "air route to the field hospital",
+      "mode": "air"
+    },
+    {
+      "id": "AC",
+      "from": "P",
+      "to": "C",
+      "minutes": 4,
+      "label": "air route to the care home",
+      "mode": "air"
+    }
   ],
   "vehicles": [
-    { "id": "V1", "capacity": 8, "label": "Rescue 01" },
-    { "id": "V2", "capacity": 8, "label": "Rescue 02" },
-    { "id": "V3", "capacity": 8, "label": "Rescue 03" },
-    { "id": "V4", "capacity": 12, "label": "Lorry 04" }
+    {
+      "id": "V1",
+      "capacity": 8,
+      "label": "Rescue 01"
+    },
+    {
+      "id": "V2",
+      "capacity": 8,
+      "label": "Rescue 02"
+    },
+    {
+      "id": "V3",
+      "capacity": 8,
+      "label": "Rescue 03"
+    },
+    {
+      "id": "V4",
+      "capacity": 12,
+      "label": "Lorry 04"
+    },
+    {
+      "id": "H1",
+      "capacity": 4,
+      "label": "Rescue Helicopter",
+      "mode": "air"
+    }
   ],
   "requests": [
-    { "id": "care", "destination": "C", "quantity": 8, "openedTick": 0, "dueTick": 16 },
-    { "id": "school", "destination": "S", "quantity": 12, "openedTick": 4, "dueTick": 30 },
-    { "id": "village", "destination": "V", "quantity": 8, "openedTick": 6, "dueTick": 34 },
-    { "id": "hospital", "destination": "H", "quantity": 6, "openedTick": 14, "dueTick": 46 }
+    {
+      "id": "care",
+      "destination": "C",
+      "quantity": 8,
+      "openedTick": 0,
+      "dueTick": 16
+    },
+    {
+      "id": "school",
+      "destination": "S",
+      "quantity": 12,
+      "openedTick": 4,
+      "dueTick": 30
+    },
+    {
+      "id": "village",
+      "destination": "V",
+      "quantity": 8,
+      "openedTick": 6,
+      "dueTick": 34
+    },
+    {
+      "id": "hospital",
+      "destination": "H",
+      "quantity": 6,
+      "openedTick": 14,
+      "dueTick": 46
+    }
   ],
   "observations": [
-    { "id": "stock-0", "entityId": "P", "fact": "34 crates at the port depot. Rescue 01, 02 and 03 carry 8 each; Lorry 04 carries 12. Trucks come back to reload after a delivery.", "observedTick": 0, "receivedTick": 0, "audience": ["logistics"] },
-    { "id": "roads-0", "entityId": "JS", "fact": "Harbour bridge and the causeway were both open at the minute-0 road check. This is not a guarantee of current access.", "observedTick": 0, "receivedTick": 0, "audience": ["logistics"] },
-    { "id": "tide-0", "entityId": "XV", "fact": "Tide table: high water will cover the causeway from about minute 14 to minute 26. The village has no other road.", "observedTick": 0, "receivedTick": 0, "audience": ["field"] },
-    { "id": "care-0", "entityId": "C", "fact": "The care home on the low ground by the harbour needs 8 crates by minute 16. Residents are frail and cannot be moved.", "observedTick": 0, "receivedTick": 0, "audience": ["shelter"] },
-    { "id": "school-4", "entityId": "S", "fact": "The school shelter on the hill estate now holds 140 people and needs 12 crates by minute 30.", "observedTick": 4, "receivedTick": 4, "audience": ["shelter"] },
-    { "id": "village-6", "entityId": "V", "fact": "The village hall across the bay asks for 8 crates by minute 34. The causeway is their only road.", "observedTick": 6, "receivedTick": 6, "audience": ["shelter"] },
-    { "id": "bridge-6", "entityId": "JS", "fact": "Water is at the harbour bridge girders and rising. I expect it to close within about six minutes.", "observedTick": 6, "receivedTick": 6, "audience": ["field"] },
-    { "id": "slide-10", "entityId": "RK", "fact": "A caller reports a landslide blocking Station Road. Not confirmed.", "observedTick": 10, "receivedTick": 10, "audience": ["public"] },
-    { "id": "closure-12", "entityId": "JS", "fact": "Harbour bridge is closed to new traffic.", "observedTick": 12, "receivedTick": 12, "audience": ["public", "field"] },
-    { "id": "hospital-14", "entityId": "H", "fact": "A field hospital has opened by the railway station and needs 6 crates by minute 46.", "observedTick": 14, "receivedTick": 14, "audience": ["public", "shelter"] },
-    { "id": "causeway-14", "entityId": "XV", "fact": "The causeway is under water and closed to traffic.", "observedTick": 14, "receivedTick": 14, "audience": ["public", "field"] },
-    { "id": "slide-18", "entityId": "RK", "fact": "I drove Station Road myself: it is clear. The slide is on the old quarry track, not the road.", "observedTick": 18, "receivedTick": 18, "audience": ["field"] },
-    { "id": "causeway-26", "entityId": "XV", "fact": "The tide has dropped and the causeway is open again.", "observedTick": 26, "receivedTick": 26, "audience": ["public", "field"] }
+    {
+      "id": "care-0",
+      "entityId": "C",
+      "fact": "The care home on the low ground by the harbour needs 8 crates by minute 16. Residents are frail and cannot be moved.",
+      "observedTick": 0,
+      "receivedTick": 0,
+      "audience": [
+        "shelter"
+      ]
+    },
+    {
+      "id": "heli-0",
+      "entityId": "P",
+      "fact": "Rescue Helicopter on the port helipad: 4 crates a flight, flies direct to the village hall, field hospital or care home. The pilot says gusts will ground it from about minute 20 to minute 25.",
+      "observedTick": 0,
+      "receivedTick": 0,
+      "audience": [
+        "logistics"
+      ]
+    },
+    {
+      "id": "roads-0",
+      "entityId": "JS",
+      "fact": "Harbour bridge and the causeway were both open at the minute-0 road check. This is not a guarantee of current access.",
+      "observedTick": 0,
+      "receivedTick": 0,
+      "audience": [
+        "logistics"
+      ]
+    },
+    {
+      "id": "stock-0",
+      "entityId": "P",
+      "fact": "34 crates at the port depot. Rescue 01, 02 and 03 carry 8 each; Lorry 04 carries 12. Trucks come back to reload after a delivery.",
+      "observedTick": 0,
+      "receivedTick": 0,
+      "audience": [
+        "logistics"
+      ]
+    },
+    {
+      "id": "tide-0",
+      "entityId": "XV",
+      "fact": "Tide table: high water will cover the causeway from about minute 14 to minute 26. The village has no other road.",
+      "observedTick": 0,
+      "receivedTick": 0,
+      "audience": [
+        "field"
+      ]
+    },
+    {
+      "id": "school-4",
+      "entityId": "S",
+      "fact": "The school shelter on the hill estate now holds 140 people and needs 12 crates by minute 30.",
+      "observedTick": 4,
+      "receivedTick": 4,
+      "audience": [
+        "shelter"
+      ]
+    },
+    {
+      "id": "bridge-6",
+      "entityId": "JS",
+      "fact": "Water is at the harbour bridge girders and rising. I expect it to close within about six minutes.",
+      "observedTick": 6,
+      "receivedTick": 6,
+      "audience": [
+        "field"
+      ]
+    },
+    {
+      "id": "village-6",
+      "entityId": "V",
+      "fact": "The village hall across the bay asks for 8 crates by minute 34. The causeway is their only road.",
+      "observedTick": 6,
+      "receivedTick": 6,
+      "audience": [
+        "shelter"
+      ]
+    },
+    {
+      "id": "slide-10",
+      "entityId": "RK",
+      "fact": "A caller reports a landslide blocking Station Road. Not confirmed.",
+      "observedTick": 10,
+      "receivedTick": 10,
+      "audience": [
+        "public"
+      ]
+    },
+    {
+      "id": "closure-12",
+      "entityId": "JS",
+      "fact": "Harbour bridge is closed to new traffic.",
+      "observedTick": 12,
+      "receivedTick": 12,
+      "audience": [
+        "public",
+        "field"
+      ]
+    },
+    {
+      "id": "causeway-14",
+      "entityId": "XV",
+      "fact": "The causeway is under water and closed to traffic.",
+      "observedTick": 14,
+      "receivedTick": 14,
+      "audience": [
+        "public",
+        "field"
+      ]
+    },
+    {
+      "id": "hospital-14",
+      "entityId": "H",
+      "fact": "A field hospital has opened by the railway station and needs 6 crates by minute 46.",
+      "observedTick": 14,
+      "receivedTick": 14,
+      "audience": [
+        "public",
+        "shelter"
+      ]
+    },
+    {
+      "id": "slide-18",
+      "entityId": "RK",
+      "fact": "I drove Station Road myself: it is clear. The slide is on the old quarry track, not the road.",
+      "observedTick": 18,
+      "receivedTick": 18,
+      "audience": [
+        "field"
+      ]
+    },
+    {
+      "id": "gusts-20",
+      "entityId": "AV",
+      "fact": "Gusts over the bay: the Rescue Helicopter is grounded.",
+      "observedTick": 20,
+      "receivedTick": 20,
+      "audience": [
+        "public",
+        "logistics"
+      ]
+    },
+    {
+      "id": "calm-25",
+      "entityId": "AV",
+      "fact": "Wind has eased: the Rescue Helicopter can fly again.",
+      "observedTick": 25,
+      "receivedTick": 25,
+      "audience": [
+        "public",
+        "logistics"
+      ]
+    },
+    {
+      "id": "causeway-26",
+      "entityId": "XV",
+      "fact": "The tide has dropped and the causeway is open again.",
+      "observedTick": 26,
+      "receivedTick": 26,
+      "audience": [
+        "public",
+        "field"
+      ]
+    }
   ],
   "events": [
-    { "id": "bridge-closes", "tick": 12, "type": "close-road", "edgeId": "JS" },
-    { "id": "tide-covers-causeway", "tick": 14, "type": "close-road", "edgeId": "XV" },
-    { "id": "tide-uncovers-causeway", "tick": 26, "type": "open-road", "edgeId": "XV" }
+    {
+      "id": "bridge-closes",
+      "tick": 12,
+      "type": "close-road",
+      "edgeId": "JS"
+    },
+    {
+      "id": "tide-covers-causeway",
+      "tick": 14,
+      "type": "close-road",
+      "edgeId": "XV"
+    },
+    {
+      "id": "gusts-ground-AC",
+      "tick": 20,
+      "type": "close-road",
+      "edgeId": "AC"
+    },
+    {
+      "id": "gusts-ground-AH",
+      "tick": 20,
+      "type": "close-road",
+      "edgeId": "AH"
+    },
+    {
+      "id": "gusts-ground-AV",
+      "tick": 20,
+      "type": "close-road",
+      "edgeId": "AV"
+    },
+    {
+      "id": "calm-fly-AC",
+      "tick": 25,
+      "type": "open-road",
+      "edgeId": "AC"
+    },
+    {
+      "id": "calm-fly-AH",
+      "tick": 25,
+      "type": "open-road",
+      "edgeId": "AH"
+    },
+    {
+      "id": "calm-fly-AV",
+      "tick": 25,
+      "type": "open-road",
+      "edgeId": "AV"
+    },
+    {
+      "id": "tide-uncovers-causeway",
+      "tick": 26,
+      "type": "open-road",
+      "edgeId": "XV"
+    }
   ]
 }

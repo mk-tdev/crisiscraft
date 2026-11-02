@@ -22,6 +22,8 @@ function suggestions(world: WorldState) {
   if (!isTutorial()) {
     for (const r of open.filter((r) => !assigned(r.id)).sort((a, b) => a.dueTick - b.dueTick).slice(0, 2))
       list.push(`Get ${r.quantity - r.delivered} crates to the ${requestNames[r.id]?.toLowerCase()} by minute ${r.dueTick}.`);
+    if (Object.values(world.vehicles).some((v) => v.mode === "air") && open.some((r) => r.id === "village" && !assigned("village")))
+      list.push("Can the helicopter get crates to the village before the gusts?");
     list.push("Who needs us most right now, and which roads are safe?");
     return list;
   }

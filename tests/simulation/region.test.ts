@@ -29,7 +29,7 @@ describe('Harbor Point Region', () => {
   it('holds a village truck at the causeway through high tide, then delivers when it reopens', () => {
     const run = at(send(at(start(), 6), 'V1', 'village', 8, ['P', 'W', 'Q', 'X', 'V']), region.horizon);
     expect(run.events.find(e => e.type === 'stranded')?.tick).toBe(15);
-    expect(run.events.find(e => e.type === 'road-opened')?.tick).toBe(26);
+    expect(run.events.find(e => e.type === 'road-opened' && e.data.edgeId === 'XV')?.tick).toBe(26);
     expect(run.requests.village!.completedTick).toBe(30);
   });
 
@@ -54,5 +54,36 @@ describe('Harbor Point Region', () => {
     const end = at(s, region.horizon);
     const late = Object.values(end.requests).filter(r => r.completedTick === null || r.completedTick > r.dueTick).map(r => r.id);
     expect(late).toEqual([]);
+  });
+
+  it('flies the helicopter direct over the flooded causeway, 4 crates at a time, until gusts ground it', () => {
+    const heli = (s: WorldState, route: string[]) => approveCommand(region, s, { id: `h-${s.tick}-${route.join('')}`, expectedRevision: s.revision, reserveMinimum: 1, actions: [{ vehicleId: 'H1', requestId: 'village', quantity: 4, route }] });
+    // Early flight: over the flooded causeway and home before the gusts.
+    let s = at(start(), 14);
+    expect(s.roads.XV).toBe(false);
+    s = heli(s, ['P', 'V']);
+    expect(s.vehicles.H1!.status).toBe('travelling'); // not counted against the truck reserve
+    s = at(s, 20);
+    expect(s.requests.village!.delivered).toBe(4);
+    expect(s.vehicles.H1!.node).toBe('V');
+    // Gusts from minute 20: the helicopter cannot fly home, and cannot be sent again.
+    s = at(s, 24);
+    expect(s.vehicles.H1).toMatchObject({ status: 'stranded', node: 'V' });
+    s = at(s, 31);
+    expect(s.vehicles.H1).toMatchObject({ status: 'idle', node: 'P' });
+    expect(s.events.some(e => e.type === 'returned' && e.data.vehicleId === 'H1')).toBe(true);
+  });
+
+  it('refuses a flight while the helicopter is grounded', () => {
+    const s = at(start(), 21);
+    expect(() => approveCommand(region, s, { id: 'g', expectedRevision: s.revision, reserveMinimum: 1, actions: [{ vehicleId: 'H1', requestId: 'village', quantity: 4, route: ['P', 'V'] }] })).toThrow(/grounded/);
+  });
+
+  it('keeps trucks off air routes and the helicopter off roads', () => {
+    const s = start();
+    const send2 = (vehicleId: string, route: string[]) => approveCommand(region, s, { id: 'x', expectedRevision: s.revision, reserveMinimum: 1, actions: [{ vehicleId, requestId: 'care', quantity: 4, route }] });
+    expect(() => send2('V1', ['P', 'C'])).toThrow(/disconnected/);
+    expect(() => send2('H1', ['P', 'W', 'Q', 'J', 'B', 'C'])).toThrow(/air routes/);
+    expect(send2('H1', ['P', 'C']).vehicles.H1!.status).toBe('travelling');
   });
 });

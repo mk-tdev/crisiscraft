@@ -53,8 +53,14 @@ export const scenarioSchema = z.object({
     id, from: id, to: id, minutes: z.number().int().positive(),
     /** Radio name for the road, e.g. "Harbour bridge". */
     label: z.string().min(1).max(60).optional(),
+    /** "air" routes are flown direct by aircraft; everything else is a road. */
+    mode: z.enum(['road', 'air']).optional(),
   }).strict()).min(1),
-  vehicles: z.array(z.object({ id, capacity: z.number().int().positive(), label: z.string().min(1).max(40).optional() }).strict()).min(1),
+  vehicles: z.array(z.object({
+    id, capacity: z.number().int().positive(), label: z.string().min(1).max(40).optional(),
+    /** An aircraft flies only air routes; trucks drive only roads. */
+    mode: z.enum(['road', 'air']).optional(),
+  }).strict()).min(1),
   requests: z.array(requestSchema),
   observations: z.array(observationSchema),
   events: z.array(z.discriminatedUnion('type', [
@@ -69,6 +75,8 @@ export type VehicleStatus = 'idle' | 'travelling' | 'waiting' | 'stranded' | 'de
 export interface VehicleState {
   id: string;
   capacity: number;
+  label?: string;
+  mode?: 'road' | 'air';
   node: string;
   cargo: number;
   status: VehicleStatus;

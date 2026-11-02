@@ -55,32 +55,36 @@ export const toolDefinitions = [
 
 const place = (scenario: Scenario, id: string) => scenario.nodes.find(n => n.id === id)?.label ?? id;
 
+/** Road names along a route; a two-place route with no road between them is a flight. */
 export function routeRoads(scenario: Scenario, route: string[]) {
   return route.slice(1).map((node, i) => {
-    const edge = edgeBetween(scenario, route[i]!, node);
+    const edge = edgeBetween(scenario, route[i]!, node) ?? edgeBetween(scenario, route[i]!, node, 'air');
     return edge ? roadName(scenario, edge.id) : `${route[i]}–${node}`;
   });
 }
 
 export function routeMinutes(scenario: Scenario, route: string[]) {
-  return route.slice(1).reduce((sum, node, i) => sum + (edgeBetween(scenario, route[i]!, node)?.minutes ?? 0), 0);
+  return route.slice(1).reduce((sum, node, i) => sum + ((edgeBetween(scenario, route[i]!, node) ?? edgeBetween(scenario, route[i]!, node, 'air'))?.minutes ?? 0), 0);
 }
 
-/** Every simple path from the depot, shortest first. The map has six roads, so this stays tiny. */
+/** Every simple route from the depot, shortest first, by road and (when the map has them) by air. */
 export function mapRoutes(scenario: Scenario, destination: string) {
-  const out: { route: string[]; roads: string[]; minutes: number }[] = [];
-  const walk = (path: string[], minutes: number) => {
-    const here = path.at(-1)!;
-    if (here === destination) {
-      out.push({ route: path, roads: routeRoads(scenario, path), minutes });
-      return;
-    }
-    for (const e of scenario.edges) {
-      const next = e.from === here ? e.to : e.to === here ? e.from : null;
-      if (next && !path.includes(next)) walk([...path, next], minutes + e.minutes);
-    }
-  };
-  walk([scenario.depot], 0);
+  const out: { route: string[]; roads: string[]; minutes: number; mode: 'road' | 'air' }[] = [];
+  for (const mode of ['road', 'air'] as const) {
+    const walk = (path: string[], minutes: number) => {
+      const here = path.at(-1)!;
+      if (here === destination) {
+        out.push({ route: path, roads: routeRoads(scenario, path), minutes, mode });
+        return;
+      }
+      for (const e of scenario.edges) {
+        if ((e.mode ?? 'road') !== mode) continue;
+        const next = e.from === here ? e.to : e.to === here ? e.from : null;
+        if (next && !path.includes(next)) walk([...path, next], minutes + e.minutes);
+      }
+    };
+    walk([scenario.depot], 0);
+  }
   return out.sort((a, b) => a.minutes - b.minutes || a.route.join().localeCompare(b.route.join()));
 }
 
@@ -94,12 +98,13 @@ export function planTools(scenario: Scenario, state: WorldState): PlanTools {
         const target = request?.destination ?? args.data.destination;
         if (!scenario.nodes.some(n => n.id === target)) return { result: { error: `Unknown place ${args.data.destination}.` }, call: null };
         const routes = mapRoutes(scenario, target);
-        const fastest = routes[0];
+        const byRoad = routes.find(r => r.mode === 'road');
+        const byAir = routes.find(r => r.mode === 'air');
         return {
-          result: { destination: target, routes, note: 'Nominal minutes from the map. Road status is not on the map.' },
+          result: { destination: target, routes, note: 'Nominal minutes from the map. Road status is not on the map. Air routes are for the helicopter only.' },
           call: {
             name: 'list_routes', args: args.data, result: routes,
-            summary: `Map: ${routes.length} routes to the ${place(scenario, target)}${fastest ? `; fastest ${fastest.minutes} min via ${fastest.roads.join(' → ')}` : ''}.`,
+            summary: `Map: ${routes.length} routes to the ${place(scenario, target)}${byRoad ? `; fastest by road ${byRoad.minutes} min via ${byRoad.roads.join(' → ')}` : '; no road'}${byAir ? `; by helicopter ${byAir.minutes} min` : ''}.`,
           },
         };
       }

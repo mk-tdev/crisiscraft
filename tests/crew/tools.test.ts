@@ -13,7 +13,7 @@ describe("Priya's planning tools", () => {
     expect(routes.map(r => [r.route.join(''), r.minutes])).toEqual([['DJS', 4], ['DHS', 6], ['DHJS', 9], ['DJHS', 9]]);
     const listed = planTools(harborPoint, at(5)).call('list_routes', { destination: 'school' });
     expect(JSON.stringify(listed.result)).not.toMatch(/closed|open":/);
-    expect(listed.call?.summary).toContain('fastest 4 min via Harbour Road → north bridge');
+    expect(listed.call?.summary).toContain('fastest by road 4 min via Harbour Road → north bridge');
   });
 
   it('dry-runs a plan with the same validator as the guardrail', () => {

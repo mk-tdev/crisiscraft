@@ -40,12 +40,14 @@ Pick **Harbor Point Region** in the mission briefing (the ⓘ button reopens it)
 | **Depot** | The **port depot** in the west: **34 crates**, **four trucks**: Rescue 01–03 (8 crates each) and Lorry 04 (12). Trucks **drive back to reload** after a delivery. |
 | **Who needs crates** | **Care home** on the low ground (8 by minute 16; residents can't be moved). **School** on the hill estate (12 by minute 30). **Village hall** across the bay (8 by minute 34). **Field hospital** by the station, which opens at minute 14 (6 by minute 46). 34 crates needed, 34 in stock. |
 | **Hazards** | The **harbour bridge** closes at **minute 12**. High tide covers the **causeway** to the village from **minute 14 to 26**, and it is the village's only road. At minute 10 a caller reports a **landslide on Station Road**: it is a **false alarm**, and June can confirm that at minute 18. |
+| **Rescue Helicopter** | Based on the port helipad. Flies **direct** to the village hall (5 min), field hospital (6 min) or care home (4 min) and never uses roads, but carries only **4 crates** a flight. **Gusts ground it from minute 20 to 25**: only Priya knows, from the pilot. It doesn't count towards the truck reserve. |
 | **Rule** | Keep **one truck** at the depot. |
 
 Drives take 13–16 minutes. Trucks can only be in so many places, and timing matters more than speed:
 
 - **Care home:** send it **straight away over the harbour bridge** (it arrives at 15). The ring road gets there 2 minutes late, and a bridge run sent after minute 3 hits the closure.
 - **Village:** the causeway is under water from 14 to 26. The earliest any truck can arrive is minute 30, so a truck sent early just waits at the causeway head.
+- **The helicopter:** while the causeway is under water, it is the only way into the village. Two flights are needed for 8 crates, and the gusts cut into that window. Land at the village at minute 19 and the gusts trap it there until 25, because its flight home starts at 20.
 - **Field hospital:** only reachable on Station Road. Believe the landslide rumour and you'll hold a truck you could have sent.
 
 A well-run drill supplies all four places on time (the engine tests prove one such sequence). June's tide table, Malik's priorities and Priya's map only come together if they reach the radio.

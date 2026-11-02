@@ -103,6 +103,9 @@ export function prompts(task: CrewTask) {
             ...(task.tools
               ? [
                   "You have tools. Use list_routes to read your map, check_plan to dry-run a plan against the validator, then submit_plan exactly once.",
+                  ...(task.briefing.board.trucks.some((t) => t.kind === "helicopter")
+                    ? ["The Rescue Helicopter flies only the air routes (mode air), direct, 4 crates a flight; trucks drive only roads. One plan action uses one kind of route. The helicopter does not count towards the truck reserve, and gusts can ground it."]
+                    : []),
                   "Check a plan before you submit it; if the check refuses it, fix it or hold.",
                 ]
               : []),
@@ -402,37 +405,50 @@ function generalPlan(task: Extract<CrewTask, { kind: "plan" }>): Plan {
   const open = b.board.openRequests.filter((r) => !r.complete && r.quantity > r.delivered && !b.board.trucks.some((t) => t.assignedTo === r.id && t.cargo > 0));
   const request = open.find((r) => order.includes(r.id) || order.includes(r.destinationName.toLowerCase().split(" ")[0]!)) ?? [...open].sort((x, y) => x.dueMinute - y.dueMinute)[0];
   const idle = b.board.trucks.filter((t) => t.status === "idle" && t.at === name(map.depot));
+  const trucks = idle.filter((t) => t.kind !== "helicopter");
+  const aircraft = idle.filter((t) => t.kind === "helicopter");
   const reserve = Number(/at least (\d+)/.exec(b.board.reserveRule)?.[1] ?? 1);
   if (!request) return hold("Nothing is waiting to be delivered right now.", "Every open request is complete or already has a truck.");
-  if (idle.length <= reserve) return hold("Holding: sending another truck now would break the reserve rule.", b.board.reserveRule);
-  // Avoid roads that teammates (or a refusal) said are closed or dangerous, unless the order names them.
-  // A road counts as dangerous only when the same message names it and a hazard.
+  // Avoid routes that teammates said are closed or dangerous, unless the order names them.
+  // A route counts as dangerous only when the same message names it and a hazard.
   const said = [...task.team.map((m) => m.text), ...(task.reviews ?? []).filter((r) => r.verdict === "concern").map((r) => r.text)].map((t) => t.toLowerCase());
   const avoid = new Set(map.roads.filter((r) => !order.includes(r.name.toLowerCase()) && said.some((t) => t.includes(r.name.toLowerCase()) && hazard.test(t))).map((r) => r.id));
-  const dist = new Map<string, { minutes: number; path: string[] }>([[map.depot, { minutes: 0, path: [map.depot] }]]);
-  const queue = [map.depot];
-  while (queue.length) {
-    queue.sort((x, y) => dist.get(x)!.minutes - dist.get(y)!.minutes);
-    const here = queue.shift()!;
-    for (const r of map.roads) {
-      if (avoid.has(r.id) || !r.between.includes(here)) continue;
-      const next = r.between[0] === here ? r.between[1]! : r.between[0]!;
-      const minutes = dist.get(here)!.minutes + r.minutes;
-      if (!dist.has(next) || dist.get(next)!.minutes > minutes) { dist.set(next, { minutes, path: [...dist.get(here)!.path, next] }); queue.push(next); }
+  const grounded = said.some((t) => /helicopter/.test(t) && /grounded|gust/.test(t)) || b.observations.some((o) => /grounded/i.test(o.fact) && b.minute >= o.observedMinute && !b.observations.some((p) => p.observedMinute > o.observedMinute && /fly again/i.test(p.fact)));
+  const shortest = (air: boolean) => {
+    const dist = new Map<string, { minutes: number; path: string[] }>([[map.depot, { minutes: 0, path: [map.depot] }]]);
+    const queue = [map.depot];
+    while (queue.length) {
+      queue.sort((x, y) => dist.get(x)!.minutes - dist.get(y)!.minutes);
+      const here = queue.shift()!;
+      for (const r of map.roads) {
+        if (avoid.has(r.id) || r.mode.startsWith("air") !== air || !r.between.includes(here)) continue;
+        const next = r.between[0] === here ? r.between[1]! : r.between[0]!;
+        const minutes = dist.get(here)!.minutes + r.minutes;
+        if (!dist.has(next) || dist.get(next)!.minutes > minutes) { dist.set(next, { minutes, path: [...dist.get(here)!.path, next] }); queue.push(next); }
+      }
     }
-  }
-  const found = dist.get(request.destination);
-  if (!found) return hold(`I have no safe road to the ${request.destinationName} right now.`, `Avoiding: ${[...avoid].map((id) => map.roads.find((r) => r.id === id)?.name).join(", ")}.`);
+    return dist.get(request.destination);
+  };
   const need = request.quantity - request.delivered;
-  const truck = [...idle].sort((x, y) => (x.capacity >= need ? 0 : 1) - (y.capacity >= need ? 0 : 1) || x.capacity - y.capacity)[0]!;
-  const quantity = Math.min(need, truck.capacity);
-  const roads = found.path.slice(1).map((n, i) => map.roads.find((r) => r.between.includes(found.path[i]!) && r.between.includes(n))?.name ?? n);
+  const byRoad = trucks.length > reserve ? shortest(false) : undefined;
+  const byAir = aircraft.length && !grounded ? shortest(true) : undefined;
+  // Trucks carry more; the helicopter goes when there is no safe road or no truck to spare.
+  const pick = byRoad ? { route: byRoad, vehicle: [...trucks].sort((x, y) => (x.capacity >= need ? 0 : 1) - (y.capacity >= need ? 0 : 1) || x.capacity - y.capacity)[0]!, air: false }
+    : byAir ? { route: byAir, vehicle: aircraft[0]!, air: true } : null;
+  if (!pick) {
+    if (trucks.length <= reserve && !byAir) return hold("Holding: sending another truck now would break the reserve rule, and the helicopter can't go.", b.board.reserveRule);
+    return hold(`I have no safe way to the ${request.destinationName} right now.`, `Avoiding: ${[...avoid].map((id) => map.roads.find((r) => r.id === id)?.name).join(", ") || "nothing"}${grounded ? "; the helicopter is grounded" : ""}.`);
+  }
+  const found = pick.route;
+  const quantity = Math.min(need, pick.vehicle.capacity);
+  const legs = found.path.slice(1).map((n, i) => map.roads.find((r) => r.mode.startsWith("air") === pick.air && r.between.includes(found.path[i]!) && r.between.includes(n))?.name ?? n);
   return {
-    message: `Send ${truck.name} with ${quantity} crates to the ${request.destinationName} via ${roads.join(" → ")}, about ${found.minutes} minutes.`,
-    rationale: avoid.size ? `Shortest road that avoids what the team warned about: ${[...avoid].map((id) => map.roads.find((r) => r.id === id)?.name).join(", ")}.` : `Shortest road on my map; due by minute ${request.dueMinute}.`,
+    message: `Send ${pick.vehicle.name} with ${quantity} crates to the ${request.destinationName} via ${legs.join(" → ")}, about ${found.minutes} minutes.`,
+    rationale: pick.air ? `No safe road or no truck to spare, so the helicopter flies it${need > quantity ? `; ${need - quantity} crates still to follow` : ""}.`
+      : avoid.size ? `Shortest road that avoids what the team warned about: ${[...avoid].map((id) => map.roads.find((r) => r.id === id)?.name).join(", ")}.` : `Shortest road on my map; due by minute ${request.dueMinute}.`,
     hold: false,
-    actions: [{ vehicleId: truck.id, requestId: request.id, quantity, route: found.path }],
-    cites: b.observations.filter((o) => o.id.startsWith("stock")).map((o) => o.id),
+    actions: [{ vehicleId: pick.vehicle.id, requestId: request.id, quantity, route: found.path }],
+    cites: b.observations.filter((o) => o.id.startsWith("stock") || (pick.air && o.id.startsWith("heli"))).map((o) => o.id),
   };
 }
 

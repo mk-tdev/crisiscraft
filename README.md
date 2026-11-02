@@ -26,7 +26,7 @@ Nobody sees everything. Priya has the road map, but only June has seen the water
 ## Two drills
 
 - **Harbor Point** (tutorial, 15 minutes): one school, one bridge, two trucks. Learn the radio, approvals and rewind in three minutes.
-- **Harbor Point Region** (50 minutes): a care home, a hill school, a village across the bay and a field hospital, with four trucks that return to reload and 34 crates for 34 needed. The harbour bridge closes, high tide drowns the causeway for twelve minutes, and a landslide report turns out to be false. Pick it in the mission briefing.
+- **Harbor Point Region** (50 minutes): a care home, a hill school, a village across the bay and a field hospital, with four trucks that return to reload, a **Rescue Helicopter** that flies direct but carries only 4 crates, and 34 crates for 34 needed. The harbour bridge closes, high tide drowns the causeway for twelve minutes, gusts ground the helicopter from minute 20 to 25 (only the pilot's report to Priya says so), and a landslide report turns out to be false. Pick it in the mission briefing.
 
 ## Try a drill in three minutes
 

@@ -35,16 +35,16 @@ export function briefing(scenario: Scenario, state: WorldState, role: Role) {
         complete: r.completedTick !== null,
       })),
       trucks: Object.values(state.vehicles).map(v => ({
-        id: v.id, name: truckName(scenario, v.id), capacity: v.capacity, status: v.status, at: v.leg ? `on the ${roadName(scenario, v.leg.edgeId)}` : label(scenario, v.node),
+        id: v.id, name: truckName(scenario, v.id), kind: v.mode === 'air' ? 'helicopter' : 'truck', capacity: v.capacity, status: v.status, at: v.leg ? `on the ${roadName(scenario, v.leg.edgeId)}` : label(scenario, v.node),
         cargo: v.cargo, assignedTo: v.requestId,
       })),
-      reserveRule: `Keep at least ${state.reserveMinimum} truck idle at the depot.`,
+      reserveRule: `Keep at least ${state.reserveMinimum} truck idle at the depot.${scenario.vehicles.some(v => v.mode === 'air') ? ' Aircraft do not count towards the reserve.' : ''}`,
     },
     // Only logistics holds the road map; nobody receives live road status except through reports.
     ...(role === 'logistics' ? {
       roadMap: {
         places: scenario.nodes.map(n => ({ id: n.id, name: n.label })),
-        roads: scenario.edges.map(e => ({ id: e.id, name: roadName(scenario, e.id), between: [e.from, e.to], minutes: e.minutes })),
+        roads: scenario.edges.map(e => ({ id: e.id, name: roadName(scenario, e.id), mode: e.mode === 'air' ? 'air (helicopter only)' : 'road', between: [e.from, e.to], minutes: e.minutes })),
         depot: scenario.depot,
       },
     } : {}),

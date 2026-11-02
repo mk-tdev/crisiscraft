@@ -72,8 +72,9 @@ export function createWorld(scenario: Scenario): WorldState {
   return state;
 }
 
+/** Idle trucks at the depot: the reserve rule is about trucks, so aircraft never count. */
 export function idleAtDepot(scenario: Scenario, state: WorldState): number {
-  return Object.values(state.vehicles).filter(v => v.status === 'idle' && v.node === scenario.depot).length;
+  return Object.values(state.vehicles).filter(v => v.status === 'idle' && v.node === scenario.depot && v.mode !== 'air').length;
 }
 
 /** An empty truck heading home after a delivery, in scenarios where trucks return to reload. */
@@ -92,10 +93,10 @@ function startNextLeg(scenario: Scenario, state: WorldState, vehicle: VehicleSta
     return;
   }
   let next = vehicle.route[1];
-  let edge = next ? edgeBetween(scenario, vehicle.node, next) : undefined;
+  let edge = next ? edgeBetween(scenario, vehicle.node, next, vehicle.mode) : undefined;
   if (!edge || !state.roads[edge.id]) {
     const blockedEdgeId = edge?.id;
-    const route = shortestOpenRoute(scenario, state.roads, vehicle.node, destination);
+    const route = shortestOpenRoute(scenario, state.roads, vehicle.node, destination, vehicle.mode);
     if (!route) {
       if (vehicle.status !== 'stranded') {
         event(state, 'stranded', `${vehicle.id} has no open route to ${destination}; waiting for a road to open.`, { vehicleId: vehicle.id }, causeId);
@@ -105,7 +106,7 @@ function startNextLeg(scenario: Scenario, state: WorldState, vehicle: VehicleSta
     }
     vehicle.route = route;
     next = route[1]!;
-    edge = edgeBetween(scenario, vehicle.node, next)!;
+    edge = edgeBetween(scenario, vehicle.node, next, vehicle.mode)!;
     // A truck heading home has no planned route yet; only a blocked planned road is a diversion.
     if (blockedEdgeId) {
       const closure = [...state.events].reverse().find(e => e.type === 'road-closed' && e.data.edgeId === blockedEdgeId);
@@ -172,9 +173,9 @@ export function approveCommand(scenario: Scenario, current: WorldState, input: u
     if (action.quantity > request.quantity - request.delivered - committed) invalid('Quantity exceeds unassigned request demand.');
     if (action.route[0] !== vehicle.node || action.route.at(-1) !== request.destination) invalid('Route endpoints do not match the assignment.');
     for (let i = 1; i < action.route.length; i++) {
-      const edge = edgeBetween(scenario, action.route[i - 1]!, action.route[i]!);
-      if (!edge) invalid('Route contains disconnected nodes.');
-      if (!state.roads[edge.id]) invalid('Route uses an already-closed road.');
+      const edge = edgeBetween(scenario, action.route[i - 1]!, action.route[i]!, vehicle.mode);
+      if (!edge) invalid(vehicle.mode === 'air' ? 'The helicopter can only fly the air routes on the map.' : 'Route contains disconnected nodes.');
+      if (!state.roads[edge.id]) invalid(vehicle.mode === 'air' ? 'That air route is closed: the helicopter is grounded.' : 'Route uses an already-closed road.');
     }
     state.stock -= action.quantity;
     vehicle.cargo = action.quantity;

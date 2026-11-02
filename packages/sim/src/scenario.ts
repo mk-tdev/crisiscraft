@@ -9,7 +9,7 @@ export function parseScenario(input: unknown): Scenario {
   };
   unique(s.nodes.map(n => n.id), 'node');
   unique(s.edges.map(e => e.id), 'edge');
-  unique(s.edges.map(e => [e.from, e.to].sort().join('/')), 'road endpoints');
+  unique(s.edges.map(e => [e.mode ?? 'road', e.from, e.to].sort().join('/')), 'road endpoints');
   unique(s.vehicles.map(v => v.id), 'vehicle');
   unique(s.requests.map(r => r.id), 'request');
   unique([...s.events.map(e => e.id), ...s.observations.map(o => o.id)], 'external event');

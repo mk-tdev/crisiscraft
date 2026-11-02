@@ -60,7 +60,9 @@ export function describe(e: SimEvent): { text: string; tone: Tone } {
     case "request-opened":
       return { text: `${requestNames[String(d.requestId)] ?? d.requestId} asks for ${d.quantity} crates.`, tone: "warn" };
     case "road-closed":
-      return { text: `${roads[String(d.edgeId)] ?? d.edgeId} closed to new traffic.`, tone: "bad" };
+      return current.edges.find((x) => x.id === d.edgeId)?.mode === "air"
+        ? { text: `Gusts: the helicopter is grounded (${roads[String(d.edgeId)]?.toLowerCase()}).`, tone: "bad" }
+        : { text: `${roads[String(d.edgeId)] ?? d.edgeId} closed to new traffic.`, tone: "bad" };
     case "receiving-changed":
       return { text: `${places[String(d.nodeId)]} ${d.enabled ? "has power again and can unload" : "lost power and cannot unload"}.`, tone: d.enabled ? "good" : "bad" };
     case "observation-received":
@@ -78,7 +80,9 @@ export function describe(e: SimEvent): { text: string; tone: Tone } {
     case "delivered":
       return { text: `${truck} unloaded ${d.quantity} crates at ${requestNames[String(d.requestId)]}.`, tone: "good" };
     case "road-opened":
-      return { text: `${roads[String(d.edgeId)] ?? d.edgeId} is open again.`, tone: "good" };
+      return current.edges.find((x) => x.id === d.edgeId)?.mode === "air"
+        ? { text: `Wind easing: the helicopter can fly the ${roads[String(d.edgeId)]?.toLowerCase()} again.`, tone: "good" }
+        : { text: `${roads[String(d.edgeId)] ?? d.edgeId} is open again.`, tone: "good" };
     case "returned":
       return { text: `${truck} is back at the depot and can be sent again.`, tone: "info" };
   }
